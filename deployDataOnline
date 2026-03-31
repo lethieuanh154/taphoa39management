@@ -79,7 +79,7 @@ Sau khi cài SSL, kiểm tra: https://management.songminhcr.com
 Trên máy local:
 
 ng build --configuration production
-scp -r dist/tap-hoa39-management/browser/* root@103.173.154.35:/apps/taphoa39management/
+scp -r dist/taphoa39management/browser/* root@103.173.154.35:/apps/taphoa39management/
 
 Không cần restart nginx (chỉ là static files).
 
