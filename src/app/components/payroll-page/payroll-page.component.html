@@ -1,0 +1,344 @@
+<div class="payroll-container">
+  <div class="header">
+    <h1>Bảng Lương</h1>
+
+    <div class="filters">
+      <!-- Filter by worker name -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Tìm theo tên nhân viên</mat-label>
+        <input matInput [(ngModel)]="searchWorkerName" placeholder="Nhập tên nhân viên">
+      </mat-form-field>
+
+      <!-- Start date picker -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Từ ngày</mat-label>
+        <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" (dateChange)="onStartDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+
+      <!-- End date picker -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Đến ngày</mat-label>
+        <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" (dateChange)="onEndDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Regular Employee Payroll Table -->
+  <div class="section-header">
+    <h2>Bảng Lương Nhân Viên Chính Thức</h2>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="payroll-table">
+      <thead>
+        <tr>
+          <th class="stt-col">STT</th>
+          <th class="code-col">Mã NV</th>
+          <th class="name-col">Họ và tên</th>
+          <th class="position-col">Chức danh</th>
+          <th class="input-col">Lương cơ bản</th>
+          <th class="input-col">Phụ cấp ca kéo dài</th>
+          <th class="input-col">Phụ cấp trách nhiệm</th>
+          <th class="input-col">Phụ cấp quản lý ca</th>
+          <th class="input-col">Phụ cấp xăng</th>
+          <th class="input-col">Phụ cấp điện thoại</th>
+          <th class="input-col">Phụ cấp ăn trưa</th>
+          <th class="calc-col">Tổng lương</th>
+          <th class="calc-col">BHXH 8%</th>
+          <th class="calc-col">BHYT 1.5%</th>
+          <th class="calc-col">BHTN 1%</th>
+          <th class="calc-col">Tổng trích BH</th>
+          <th class="calc-col highlight-col">Thực lĩnh</th>
+          <th class="action-col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let record of filteredPayrollRecords" class="payroll-row">
+          <!-- STT -->
+          <td class="stt-cell">{{ record.stt }}</td>
+
+          <!-- Mã NV -->
+          <td class="code-cell">
+            <span [class.highlighted]="shouldHighlightWorker(record.maNhanVien)">{{ record.maNhanVien }}</span>
+          </td>
+
+          <!-- Họ và tên -->
+          <td class="name-cell">
+            <input type="text"
+                   class="name-input"
+                   [(ngModel)]="record.hoTen"
+                   [class.highlighted]="shouldHighlightWorker(record.hoTen)"
+                   placeholder="Nhập tên">
+          </td>
+
+          <!-- Chức danh -->
+          <td class="position-cell">
+            <input type="text"
+                   class="position-input"
+                   [(ngModel)]="record.chucDanh"
+                   placeholder="Chức danh">
+          </td>
+
+          <!-- Lương cơ bản -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.luongCoBan"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="100000">
+          </td>
+
+          <!-- Phụ cấp ca kéo dài -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCapCaKeoDai"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="100000">
+          </td>
+
+          <!-- Phụ cấp trách nhiệm -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCapTracNhiem"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="100000">
+          </td>
+
+          <!-- Phụ cấp quản lý ca -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCapQuanLyCa"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="100000">
+          </td>
+
+          <!-- Phụ cấp xăng -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCapXang"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="100000">
+          </td>
+
+          <!-- Phụ cấp điện thoại -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCapDienThoai"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="50000">
+          </td>
+
+          <!-- Phụ cấp ăn trưa -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCapAnTrua"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="100000">
+          </td>
+
+          <!-- Tổng lương (calculated) -->
+          <td class="calc-cell total-cell">
+            <span class="calc-value">{{ formatNumber(getTongLuong(record)) }}</span>
+          </td>
+
+          <!-- BHXH 8% (calculated) -->
+          <td class="calc-cell">
+            <span class="calc-value">{{ formatNumber(getBHXH(record)) }}</span>
+          </td>
+
+          <!-- BHYT 1.5% (calculated) -->
+          <td class="calc-cell">
+            <span class="calc-value">{{ formatNumber(getBHYT(record)) }}</span>
+          </td>
+
+          <!-- BHTN 1% (calculated) -->
+          <td class="calc-cell">
+            <span class="calc-value">{{ formatNumber(getBHTN(record)) }}</span>
+          </td>
+
+          <!-- Tổng trích BH (calculated) -->
+          <td class="calc-cell total-insurance-cell">
+            <span class="calc-value">{{ formatNumber(getTongTrichBH(record)) }}</span>
+          </td>
+
+          <!-- Thực lĩnh (calculated) -->
+          <td class="calc-cell net-salary-cell">
+            <span class="calc-value highlight-value">{{ formatNumber(getThucLinh(record)) }}</span>
+          </td>
+
+          <!-- Thao tác -->
+          <td class="action-cell">
+            <button class="save-btn"
+                    (click)="savePayrollRecord(record)"
+                    title="Lưu"
+                    [disabled]="!record.isDirty">
+              <i class="fa-solid fa-save"></i>
+            </button>
+            <button class="delete-btn" (click)="deleteRecord(record)" title="Xóa">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+
+        <!-- Add Row Button -->
+        <!-- <tr class="add-row">
+          <td colspan="18" class="add-cell">
+            <button class="add-btn" (click)="addNewRecord()">
+              <i class="fa-solid fa-plus"></i> Thêm hàng
+            </button>
+          </td>
+        </tr> -->
+
+        <tr *ngIf="filteredPayrollRecords.length === 0" class="empty-row">
+          <td colspan="18" class="empty-message">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+            <p>Chưa có nhân viên chính thức nào.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Contractor Employee Payroll Table -->
+  <div class="section-header contractor-section">
+    <h2>Bảng Lương Nhân Viên Khoán</h2>
+  </div>
+
+  <div class="table-wrapper contractor-table-wrapper">
+    <table class="payroll-table contractor-payroll-table">
+      <thead>
+        <tr>
+          <th class="stt-col">STT</th>
+          <th class="code-col">Mã NV</th>
+          <th class="name-col">Họ và tên</th>
+          <th class="hours-col">Tổng giờ làm</th>
+          <th class="rate-col">Đơn giá/giờ</th>
+          <th class="calc-col">Tiền khoán</th>
+          <th class="input-col">Thưởng</th>
+          <th class="input-col">Phụ cấp</th>
+          <th class="calc-col total-cell">Tổng tiền công</th>
+          <th class="calc-col tax-cell">Thuế TNCN 10%</th>
+          <th class="calc-col highlight-col">Thực trả</th>
+          <th class="action-col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let record of filteredContractorRecords" class="payroll-row contractor-row">
+          <!-- STT -->
+          <td class="stt-cell">{{ record.stt }}</td>
+
+          <!-- Mã NV -->
+          <td class="code-cell">
+            <span [class.highlighted]="shouldHighlightWorker(record.maNhanVien)">{{ record.maNhanVien }}</span>
+          </td>
+
+          <!-- Họ và tên -->
+          <td class="name-cell">
+            <span [class.highlighted]="shouldHighlightWorker(record.hoTen)">{{ record.hoTen }}</span>
+          </td>
+
+          <!-- Tổng giờ làm (read from attendance) -->
+          <td class="hours-cell">
+            <span class="hours-value">{{ record.tongGioLam }}</span>
+          </td>
+
+          <!-- Đơn giá/giờ -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input rate-input"
+                   [(ngModel)]="record.donGiaGio"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="1000">
+          </td>
+
+          <!-- Tiền khoán (calculated: đơn giá * giờ làm) -->
+          <td class="calc-cell">
+            <span class="calc-value">{{ formatNumber(getTienKhoan(record)) }}</span>
+          </td>
+
+          <!-- Thưởng -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.thuong"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="10000">
+          </td>
+
+          <!-- Phụ cấp -->
+          <td class="input-cell">
+            <input type="number"
+                   class="salary-input"
+                   [(ngModel)]="record.phuCap"
+                   (input)="onInputChange(record)"
+                   min="0"
+                   step="10000">
+          </td>
+
+          <!-- Tổng tiền công (calculated) -->
+          <td class="calc-cell total-cell">
+            <span class="calc-value">{{ formatNumber(getTongTienCong(record)) }}</span>
+          </td>
+
+          <!-- Thuế TNCN 10% (calculated) -->
+          <td class="calc-cell tax-cell">
+            <span class="calc-value">{{ formatNumber(getThueTNCN(record)) }}</span>
+          </td>
+
+          <!-- Thực trả (calculated) -->
+          <td class="calc-cell net-salary-cell">
+            <span class="calc-value highlight-value">{{ formatNumber(getThucTra(record)) }}</span>
+          </td>
+
+          <!-- Thao tác -->
+          <td class="action-cell">
+            <button class="save-btn"
+                    (click)="saveContractorPayrollRecord(record)"
+                    title="Lưu"
+                    [disabled]="!record.isDirty">
+              <i class="fa-solid fa-save"></i>
+            </button>
+            <button class="delete-btn" (click)="deleteContractorRecord(record)" title="Xóa">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+
+        <!-- Add Row Button -->
+        <!-- <tr class="add-row">
+          <td colspan="12" class="add-cell">
+            <button class="add-btn contractor-add-btn" (click)="addNewContractorRecord()">
+              <i class="fa-solid fa-plus"></i> Thêm hàng
+            </button>
+          </td>
+        </tr> -->
+
+        <tr *ngIf="filteredContractorRecords.length === 0" class="empty-row">
+          <td colspan="12" class="empty-message">
+            <i class="fa-solid fa-user-clock"></i>
+            <p>Chưa có nhân viên khoán nào.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

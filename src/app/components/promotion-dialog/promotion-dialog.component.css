@@ -1,0 +1,91 @@
+::ng-deep .cdk-overlay-pane:has(promotion-dialog) {
+  max-width: 95vw !important;
+}
+
+::ng-deep .cdk-overlay-pane:has(promotion-dialog) .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 16px !important;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 550px;
+  max-width: 700px;
+  padding: 12px 4px;
+}
+
+h2[mat-dialog-title] {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.half-width {
+  width: 48%;
+}
+
+.date-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.date-row .half-width {
+  flex: 1;
+}
+
+.options-row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.type-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.type-checkboxes .type-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.discount-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.discount-toggle {
+  flex-shrink: 0;
+}
+
+.discount-input {
+  flex: 1;
+}
+
+.option-code {
+  color: #1976d2;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+mat-dialog-actions {
+  padding: 12px 0 4px;
+}
+
+mat-dialog-actions button[mat-raised-button] {
+  min-width: 100px;
+  font-weight: 500;
+}

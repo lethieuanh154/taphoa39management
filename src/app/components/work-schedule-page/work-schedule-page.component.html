@@ -1,0 +1,102 @@
+<div class="work-schedule-container">
+  <div class="header">
+    <h1>Lịch Làm Việc</h1>
+
+    <div class="filters">
+      <!-- Filter by worker name -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Tìm theo tên nhân viên</mat-label>
+        <input matInput [(ngModel)]="searchWorkerName" placeholder="Nhập tên nhân viên">
+      </mat-form-field>
+
+      <!-- Start date picker -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Từ ngày</mat-label>
+        <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" (dateChange)="onStartDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+
+      <!-- End date picker -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Đến ngày</mat-label>
+        <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" (dateChange)="onEndDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Week schedules -->
+  <div class="schedules-wrapper">
+    <div class="week-schedule" *ngFor="let weekSchedule of weekSchedules; let weekIndex = index">
+      <div class="week-header">
+        <h3 class="week-title">Tuần {{ weekSchedule.weekNumber }}</h3>
+        <button mat-raised-button color="primary" class="save-week-btn" (click)="saveWeekSchedule(weekIndex)">
+          <mat-icon>save</mat-icon>
+          Lưu
+        </button>
+      </div>
+
+      <div class="schedule-table-wrapper">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th class="shift-header">Ca làm</th>
+              <th *ngFor="let dayInfo of weekSchedule.dayInfos" class="day-header">
+                <div class="day-header-content">
+                  <div class="day-name">{{ dayInfo.dayName }}</div>
+                  <div class="day-date">{{ dayInfo.dateString }}</div>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let shift of shiftHeaders">
+              <td class="shift-cell">{{ shift }}</td>
+              <td *ngFor="let dayInfo of weekSchedule.dayInfos"
+                  class="worker-cell">
+                <div class="cell-content">
+                  <!-- Assigned Workers List -->
+                  <div class="assigned-workers">
+                    <div *ngFor="let assignment of getAssignedWorkers(weekIndex, dayInfo.dayName, shift)"
+                         class="worker-tag"
+                         [class.highlighted]="shouldHighlightWorker(assignment.workerName)">
+                      <span class="worker-name">{{ assignment.workerName }}</span>
+                      <button class="remove-btn"
+                              (click)="removeWorker(weekIndex, dayInfo.dayName, shift, assignment.workerId)"
+                              title="Xóa">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Add Worker Button and Dropdown -->
+                  <div class="add-worker-section">
+                    <button class="add-worker-btn"
+                            (click)="toggleDropdown(weekIndex, dayInfo.dayName, shift)"
+                            title="Thêm nhân viên">
+                      <i class="fa-solid fa-plus"></i>
+                    </button>
+
+                    <mat-form-field appearance="outline"
+                                    class="worker-select"
+                                    *ngIf="isDropdownVisible(weekIndex, dayInfo.dayName, shift)">
+                      <mat-select
+                        placeholder="Chọn NV"
+                        (selectionChange)="onWorkerSelect(weekIndex, dayInfo.dayName, shift, $event.value); toggleDropdown(weekIndex, dayInfo.dayName, shift)">
+                        <mat-option *ngFor="let worker of getAvailableWorkers(weekIndex, dayInfo.dayName, shift)" [value]="worker.id">
+                          {{ worker.name }}
+                        </mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

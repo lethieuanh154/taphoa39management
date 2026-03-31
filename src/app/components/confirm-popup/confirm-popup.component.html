@@ -1,0 +1,9 @@
+
+
+<mat-dialog-content class="title">
+    <p>{{ data.message }}</p>
+</mat-dialog-content>
+<mat-dialog-actions align="center" class='button'>
+    <button mat-button (click)="onCancel()" style="border: none;background-color: rgb(21, 138, 6);color: white;cursor: pointer;border-radius: 15px ">Hủy</button>
+    <button mat-raised-button style="border: none;background-color: red;color: white;cursor: pointer;border-radius: 15px ;" (click)="onConfirm()">Đồng ý</button>
+</mat-dialog-actions>

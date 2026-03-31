@@ -1,0 +1,117 @@
+<div class="dialog-container">
+  <div class="header">
+    <h2 mat-dialog-title>{{ dialogTitle }}</h2>
+  </div>
+
+  <div mat-dialog-content class="dialog-content">
+    <div class="form-content">
+      <!-- Left Column -->
+      <div class="left-column">
+        <div class="avatar-section">
+          <div class="avatar-placeholder" [class.has-image]="imagePreview">
+            <img *ngIf="imagePreview" [src]="imagePreview" alt="Preview">
+          </div>
+          <input type="file" id="fileInput" (change)="onFileSelected($event)" accept="image/*" style="display: none;">
+          <button mat-stroked-button color="primary" (click)="triggerFileInput()" type="button" class="choose-image-btn">
+            Chọn ảnh
+          </button>
+        </div>
+
+        <!-- Mã nhân viên -->
+        <mat-form-field appearance="outline">
+          <mat-label>Mã nhân viên *</mat-label>
+          <input matInput [(ngModel)]="worker.maNhanVien" placeholder="Nhập mã nhân viên" required [disabled]="isEditMode">
+        </mat-form-field>
+
+        <!-- Họ và tên -->
+        <mat-form-field appearance="outline">
+          <mat-label>Họ và tên *</mat-label>
+          <input matInput [(ngModel)]="worker.hoTen" placeholder="Nhập họ và tên" required>
+        </mat-form-field>
+
+        <!-- Ngày sinh và Giới tính -->
+        <div class="dob-gender-row">
+          <mat-form-field appearance="outline" class="dob-field">
+            <mat-label>Ngày sinh</mat-label>
+            <input matInput [matDatepicker]="pickerNgaySinh" [(ngModel)]="worker.ngaySinh" placeholder="Chọn ngày sinh">
+            <mat-datepicker-toggle matSuffix [for]="pickerNgaySinh"></mat-datepicker-toggle>
+            <mat-datepicker #pickerNgaySinh></mat-datepicker>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="gender-field">
+            <mat-label>Giới tính</mat-label>
+            <mat-select [(ngModel)]="worker.gioiTinh" placeholder="Chọn">
+              <mat-option *ngFor="let gender of genderOptions" [value]="gender">
+                {{ gender }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Số căn cước -->
+        <mat-form-field appearance="outline">
+          <mat-label>Số căn cước</mat-label>
+          <input matInput [(ngModel)]="worker.soCCCD" placeholder="Nhập số căn cước">
+        </mat-form-field>
+
+        <!-- Số điện thoại -->
+        <mat-form-field appearance="outline">
+          <mat-label>Số điện thoại</mat-label>
+          <input matInput [(ngModel)]="worker.soDienThoai" placeholder="Nhập số điện thoại">
+        </mat-form-field>
+
+        <!-- Email -->
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" [(ngModel)]="worker.email" placeholder="Nhập email">
+        </mat-form-field>
+      </div>
+
+      <!-- Right Column -->
+      <div class="right-column">
+        <!-- Phòng ban -->
+        <mat-form-field appearance="outline">
+          <mat-label>Phòng ban</mat-label>
+          <mat-select [(ngModel)]="worker.phongBan" placeholder="Chọn phòng ban">
+            <mat-option *ngFor="let dept of departments" [value]="dept">
+              {{ dept }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Chức danh -->
+        <mat-form-field appearance="outline">
+          <mat-label>Chức danh</mat-label>
+          <mat-select [(ngModel)]="worker.chucDanh" placeholder="Chọn chức danh">
+            <mat-option *ngFor="let pos of positions" [value]="pos">
+              {{ pos }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Ngày bắt đầu làm việc -->
+        <mat-form-field appearance="outline">
+          <mat-label>Ngày bắt đầu làm việc</mat-label>
+          <input matInput [matDatepicker]="pickerNgayBatDau" [(ngModel)]="worker.ngayBatDau" placeholder="Chọn ngày bắt đầu">
+          <mat-datepicker-toggle matSuffix [for]="pickerNgayBatDau"></mat-datepicker-toggle>
+          <mat-datepicker #pickerNgayBatDau></mat-datepicker>
+        </mat-form-field>
+
+        <!-- Địa chỉ -->
+        <mat-form-field appearance="outline">
+          <mat-label>Địa chỉ</mat-label>
+          <textarea matInput [(ngModel)]="worker.diaChi" placeholder="Nhập địa chỉ" rows="3"></textarea>
+        </mat-form-field>
+      </div>
+    </div>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-stroked-button (click)="onCancel()" type="button" [disabled]="isLoading">Hủy</button>
+    <button mat-flat-button color="primary" (click)="onSubmit()" type="button" [disabled]="isLoading">
+      @if (isLoading) {
+        <mat-spinner diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+      }
+      {{ submitButtonText }}
+    </button>
+  </div>
+</div>

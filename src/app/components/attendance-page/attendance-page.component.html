@@ -1,0 +1,142 @@
+<div class="attendance-container">
+  <div class="header">
+    <h1>Bảng Chấm Công</h1>
+
+    <div class="filters">
+      <!-- Filter by worker name -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Tìm theo tên nhân viên</mat-label>
+        <input matInput [(ngModel)]="searchWorkerName" placeholder="Nhập tên nhân viên">
+      </mat-form-field>
+
+      <!-- Start date picker -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Từ ngày</mat-label>
+        <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" (dateChange)="onStartDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+
+      <!-- End date picker -->
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Đến ngày</mat-label>
+        <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" (dateChange)="onEndDateChange($event)">
+        <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+
+      <!-- Generate from Schedule Button -->
+      <button mat-raised-button color="accent" (click)="generateRecordsFromSchedule()" class="generate-btn">
+        <i class="fa-solid fa-calendar-check"></i> Tạo từ lịch làm việc
+      </button>
+
+      <!-- Save All Button -->
+      <button mat-raised-button color="warn" (click)="saveAllRecords()" class="save-all-btn">
+        <i class="fa-solid fa-save"></i> Lưu tất cả
+      </button>
+
+      <!-- Add Record Button -->
+      <button mat-raised-button color="primary" (click)="addNewRecord()" class="add-btn">
+        <i class="fa-solid fa-plus"></i> Thêm bản ghi
+      </button>
+    </div>
+  </div>
+
+  <!-- Attendance Table -->
+  <div class="table-wrapper">
+    <table class="attendance-table">
+      <thead>
+        <tr>
+          <th class="date-col">Ngày tháng</th>
+          <th class="worker-col">Tên nhân viên</th>
+          <th class="time-col">Giờ bắt đầu</th>
+          <th class="time-col">Giờ kết thúc</th>
+          <th class="hours-col">Tổng giờ làm</th>
+          <th class="notes-col">Ghi chú</th>
+          <th class="actions-col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let record of filteredRecords" class="record-row">
+          <!-- Date -->
+          <td class="date-cell">
+            <mat-form-field appearance="outline" class="date-field">
+              <input matInput
+                     [matDatepicker]="recordPicker"
+                     [(ngModel)]="record.date"
+                     (dateChange)="onDateChange(record, $event)"
+                     placeholder="Chọn ngày">
+              <mat-datepicker-toggle matSuffix [for]="recordPicker"></mat-datepicker-toggle>
+              <mat-datepicker #recordPicker></mat-datepicker>
+            </mat-form-field>
+          </td>
+
+          <!-- Worker Name -->
+          <td class="worker-cell">
+            <mat-form-field appearance="outline" class="worker-select-field" [class.has-error]="record.hasError">
+              <mat-label>Chọn nhân viên</mat-label>
+              <mat-select [(ngModel)]="record.workerId"
+                          (selectionChange)="onWorkerChange(record, $event.value)"
+                          [class.highlighted]="shouldHighlightWorker(record.workerName)">
+                <mat-option *ngFor="let emp of employees" [value]="emp.maNhanVien">
+                  {{ emp.hoTen }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </td>
+
+          <!-- Start Time -->
+          <td class="time-cell">
+            <input type="time"
+                   class="time-input"
+                   [(ngModel)]="record.startTime"
+                   (change)="onTimeChange(record)">
+          </td>
+
+          <!-- End Time -->
+          <td class="time-cell">
+            <input type="time"
+                   class="time-input"
+                   [(ngModel)]="record.endTime"
+                   (change)="onTimeChange(record)">
+          </td>
+
+          <!-- Total Hours -->
+          <td class="hours-cell">
+            <span class="hours-display">{{ record.totalHours }} giờ</span>
+          </td>
+
+          <!-- Notes -->
+          <td class="notes-cell">
+            <input type="text"
+                   class="notes-input"
+                   [(ngModel)]="record.notes"
+                   (input)="onNotesChange(record)"
+                   placeholder="Ghi chú">
+          </td>
+
+          <!-- Actions -->
+          <td class="actions-cell">
+            <button class="save-btn"
+                    (click)="saveRecord(record)"
+                    title="Lưu bản ghi"
+                    [disabled]="!record.isDirty">
+              <i class="fa-solid fa-save"></i>
+            </button>
+            <button class="delete-btn"
+                    (click)="deleteRecord(record)"
+                    title="Xóa bản ghi">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredRecords.length === 0" class="empty-row">
+          <td colspan="7" class="empty-message">
+            Chưa có bản ghi nào. Nhấn "Thêm bản ghi" để bắt đầu.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

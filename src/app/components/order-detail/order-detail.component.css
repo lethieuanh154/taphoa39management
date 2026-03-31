@@ -1,0 +1,253 @@
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    color: #333;
+    padding: 0px;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.customer-filter {
+    top: 0;
+}
+
+.content-hd {
+    font-size: 12px;
+    border-right: 1px dotted #dddddd;
+    text-align: center !important;
+}
+
+.sticky {
+    position: sticky;
+    background: #0070F4 !important;
+    color: #f5f5f5;
+    overflow: hidden;
+    top: 0;
+    z-index: 5;
+    border-bottom: 1px solid #ddd;
+    font-size: 12px;
+    text-align: center !important;
+}
+
+.icon {
+    cursor: pointer;
+    color: #1086b4;
+}
+
+/* WebSocket Status Bar Styles */
+.websocket-status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.status-indicators {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.status-item.connected {
+    color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.status-item.disconnected {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.status-item mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.sync-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.sync-button {
+    background: linear-gradient(135deg, #0070F4 0%, #0056b3 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sync-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.sync-button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.sync-button mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+/* Real-time Updates Indicator */
+.realtime-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 1px solid #c3e6cb;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.realtime-indicator mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.realtime-indicator .pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Spinning animation for sync icon */
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.component-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    /* Đảm bảo full chiều cao dialog */
+    overflow-y: auto;
+    /* Cho phép cuộn */
+    padding: 15px;
+}
+
+.invoices-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+mat-form-field {
+    min-width: 120px;
+    flex: 1 1 150px;
+    max-width: 100%;
+    font-size: 13px;
+}
+
+.date-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .date-filters {
+        flex-direction: column;
+    }
+    
+    .websocket-status-bar {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+    
+    .status-indicators {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .sync-actions {
+        justify-content: center;
+    }
+}
+
+mat-form-field input {
+    height: 36px;
+    font-size: 13px;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin-left: -10px;
+    margin-right: -5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filters-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .date-filters {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,123 @@
+<!-- Sync Status Bar (REST) -->
+<div class="websocket-status-bar">
+  <div class="status-indicators">
+    <span class="status-item rest-sync" title="Polling / Manual sync">
+      <mat-icon>cloud_sync</mat-icon>
+      REST sync
+    </span>
+    <span class="status-item">
+      <mat-icon>schedule</mat-icon>
+      Cập nhật: {{ getLastUpdateTime() }}
+    </span>
+  </div>
+  <div class="sync-actions">
+    <button mat-button (click)="refreshOrderData()" [disabled]="isDeleting" class="refresh-button">
+      <mat-icon>refresh</mat-icon>
+      Làm mới
+    </button>
+  </div>
+</div>
+
+<h6 class='title' mat-dialog-title>
+  Chi tiết đơn đặt hàng - {{data.order.id}}
+  <br>
+  <span class="customer-info">
+    Khách hàng : &nbsp;&nbsp; {{data.order.customer?.Name|| 'Khách lẻ'}} &nbsp;&nbsp;
+    {{data.order.customer?.ContactNumber}}
+  </span>
+  <br>
+  <span class="status-info" [class]="'status-' + (data.order.status || 'pending')">
+    Trạng thái: {{ getStatusText(data.order.status) }}
+  </span>
+  <span class="source-badge online" *ngIf="$any(data.order).source === 'online'">
+    Online
+  </span>
+  <br *ngIf="$any(data.order.customer)?.Address">
+  <span class="address-info" *ngIf="$any(data.order.customer)?.Address">
+    Địa chỉ: {{ $any(data.order.customer).Address }}
+  </span>
+</h6>
+
+<mat-dialog-content>
+  <div *ngIf="isDeleting || isProcessing" class="deleting-overlay">
+    <div class="spinner"></div>
+    <p>{{ isProcessing ? 'Đang xử lý đơn hàng...' : 'Đang xóa...' }}</p>
+  </div>
+
+  <table class="item-table" *ngIf="data.order.cartItems.length">
+    <thead>
+      <tr>
+        <th style="text-align: left;">Tên sản phẩm</th>
+        <th style="text-align: center;">Số lượng</th>
+        <th style="text-align: right;">Giá bán</th>
+        <th style="text-align: right;">Thành tiền</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of data.order.cartItems"
+          [style.background]="item.isGift ? '#e8f5e9' : (item.isPromotionItem ? '#fff3e0' : '')">
+        <td>
+          {{ item.product.FullName }}
+          <span *ngIf="item.isGift" style="color:#2e7d32;font-weight:bold;font-size:11px;"> [Tặng]</span>
+          <span *ngIf="item.isPromotionItem && !item.isGift" style="color:#e65100;font-weight:bold;font-size:11px;"> [KM]</span>
+          <span *ngIf="!item.isGift && !item.isPromotionItem && item.promotionId && item.unitPriceSaleOff > 0" style="color:#e65100;font-weight:bold;font-size:11px;"> [KM]</span>
+          <span *ngIf="item.promotionName" style="color:#888;font-size:10px;"> ({{ item.promotionName }})</span>
+        </td>
+        <td style="text-align: center;">{{ item.quantity }}</td>
+        <td style="text-align: end;">
+          <ng-container *ngIf="item.unitPriceSaleOff>0 && !item.isGift; else normalPrice">
+            <span style="text-decoration: line-through; color: #888; margin-right: 4px;">
+              {{ formatVnd(item.unitPrice+item.unitPriceSaleOff) }}
+            </span>
+            <span>{{ formatVnd(item.unitPrice) }}</span>
+          </ng-container>
+          <ng-template #normalPrice>
+            <span>{{ formatVnd(item.unitPrice) }}</span>
+          </ng-template>
+        </td>
+        <td style="text-align: right;">{{ formatVnd(item.totalPrice) }}</td>
+      </tr>
+      <tr style="border-top: 3px dotted rgb(0, 0, 0);">
+        <td style="font-weight: bold;">Tổng cộng:</td>
+        <td style="font-weight: bold; text-align: center;">{{ getTotalQuantity() | number:'1.0-0' }}</td>
+        <td colspan="2" style="font-weight: bold; text-align: right;">{{ formatVnd(getItemsSubtotal()) }}</td>
+      </tr>
+      <tr *ngIf="$any(data.order).shipCost > 0">
+        <td style="font-size: 12px;">Phí giao hàng:</td>
+        <td colspan="3" style="text-align: right; font-size: 12px;">{{ formatVnd($any(data.order).shipCost) }}</td>
+      </tr>
+      <tr *ngIf="$any(data.order).pointsUsedForOrder > 0" style="color: #e65100;">
+        <td style="font-size: 12px;">Trừ điểm thưởng (hàng):</td>
+        <td colspan="3" style="text-align: right; font-size: 12px;">-{{ formatVnd($any(data.order).pointsUsedForOrder) }}</td>
+      </tr>
+      <tr *ngIf="$any(data.order).pointsUsedForShip > 0" style="color: #e65100;">
+        <td style="font-size: 12px;">Trừ điểm thưởng (ship):</td>
+        <td colspan="3" style="text-align: right; font-size: 12px;">-{{ formatVnd($any(data.order).pointsUsedForShip) }}</td>
+      </tr>
+      <tr *ngIf="$any(data.order).pointsUsedForOrder > 0 || $any(data.order).pointsUsedForShip > 0 || $any(data.order).shipCost > 0"
+          style="border-top: 1px solid #ccc;">
+        <td style="font-weight: bold;">Thanh toán:</td>
+        <td colspan="3" style="font-weight: bold; text-align: right;">{{ formatVnd(getTotalPrice()) }}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold;color:red">Nợ:</td>
+        <td colspan="3" style="font-weight: bold; color:red;text-align: end;">{{ formatVnd(getDebt()) }}</td>
+      </tr>
+      <tr style="font-size: 11px;font-style: italic;">
+        <td style="font-weight: bold">Ghi chú:</td>
+        <td colspan="3" style="font-weight: bold; color:rgb(134, 133, 133);text-align: end;">{{ data.order.note }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p *ngIf="!data.order.cartItems.length">Không có sản phẩm trong đơn đặt hàng.</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="center">
+  <button mat-button
+          class="delete-button"
+          (click)="deleteOrder()"
+          [disabled]="isDeleting || data.order.status === 'checked'">
+    Xóa đơn hàng
+  </button>
+  <button mat-button (click)="close()">Đóng</button>
+</mat-dialog-actions>

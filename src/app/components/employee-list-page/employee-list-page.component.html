@@ -1,0 +1,170 @@
+<div class="employee-list-container">
+  <div class="header">
+    <h1>Danh Sách Nhân Viên</h1>
+
+    <div class="header-actions">
+      <!-- Search -->
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Tìm kiếm</mat-label>
+        <input matInput [(ngModel)]="searchText" placeholder="Tìm theo mã NV, tên, SĐT, email...">
+        <i class="fa-solid fa-magnifying-glass search-icon " matSuffix></i>
+      </mat-form-field>
+
+      <!-- Add Employee Button -->
+      <button mat-raised-button color="primary" (click)="openAddEmployeeDialog()" class="add-btn">
+        <i class="fa-solid fa-user-plus"></i> Thêm nhân viên
+      </button>
+    </div>
+  </div>
+
+  <!-- Employee Table -->
+  <div class="table-wrapper">
+    <table class="employee-table">
+      <thead>
+        <tr>
+          <th class="image-col">Ảnh</th>
+          <th class="code-col">Mã NV</th>
+          <th class="name-col">Tên nhân viên</th>
+          <th class="gender-col">Giới tính</th>
+          <th class="id-col">Số CCCD</th>
+          <th class="dept-col">Phòng ban</th>
+          <th class="contractor-col">NV Khoán</th>
+          <th class="start-col">Ngày bắt đầu</th>
+          <th class="end-col">Ngày kết thúc</th>
+          <th class="phone-col">Số điện thoại</th>
+          <th class="email-col">Email</th>
+          <th class="address-col">Địa chỉ</th>
+          <th class="actions-col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let employee of filteredEmployees" class="employee-row" [class.inactive-employee]="employee.ngayKetThuc" [class.editing-row]="isEditing(employee)">
+          <!-- Image -->
+          <td class="image-cell">
+            <div class="employee-avatar">
+              <img *ngIf="employee.hinhAnh" [src]="employee.hinhAnh" [alt]="employee.hoTen">
+              <i *ngIf="!employee.hinhAnh" class="fa-solid fa-user default-avatar"></i>
+            </div>
+          </td>
+
+          <!-- Employee Code -->
+          <td class="code-cell">
+            <input *ngIf="isEditing(employee)" type="text" [(ngModel)]="editingEmployee!.maNhanVien" class="edit-input">
+            <span *ngIf="!isEditing(employee)" [class.highlighted]="shouldHighlight(employee.maNhanVien)">
+              {{ employee.maNhanVien }}
+            </span>
+          </td>
+
+          <!-- Name -->
+          <td class="name-cell">
+            <input *ngIf="isEditing(employee)" type="text" [(ngModel)]="editingEmployee!.hoTen" class="edit-input">
+            <span *ngIf="!isEditing(employee)" class="employee-name" [class.highlighted]="shouldHighlight(employee.hoTen)">
+              {{ employee.hoTen }}
+            </span>
+          </td>
+
+          <!-- Gender -->
+          <td class="gender-cell">
+            <select *ngIf="isEditing(employee)" [(ngModel)]="editingEmployee!.gioiTinh" class="edit-input">
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+            <span *ngIf="!isEditing(employee)">{{ employee.gioiTinh }}</span>
+          </td>
+
+          <!-- ID Number -->
+          <td class="id-cell">
+            <input *ngIf="isEditing(employee)" type="text" [(ngModel)]="editingEmployee!.soCCCD" class="edit-input">
+            <span *ngIf="!isEditing(employee)">{{ employee.soCCCD }}</span>
+          </td>
+
+          <!-- Department -->
+          <td class="dept-cell">
+            <input *ngIf="isEditing(employee)" type="text" [(ngModel)]="editingEmployee!.phongBan" class="edit-input">
+            <span *ngIf="!isEditing(employee)">{{ employee.phongBan }}</span>
+          </td>
+
+          <!-- NV Khoán (Contractor) -->
+          <td class="contractor-cell">
+            <mat-checkbox
+              [checked]="employee.nhanVienKhoan || false"
+              (change)="toggleNhanVienKhoan(employee)"
+              [disabled]="isEditing(employee)"
+              color="primary">
+            </mat-checkbox>
+          </td>
+
+          <!-- Start Date -->
+          <td class="start-cell">
+            <input *ngIf="isEditing(employee)" type="text" [ngModel]="getDateInputValue(editingEmployee!.ngayBatDau)" (ngModelChange)="updateStartDate($event)" class="edit-input date-input" placeholder="DD/MM/YYYY" maxlength="10">
+            <span *ngIf="!isEditing(employee)">{{ formatDate(employee.ngayBatDau) }}</span>
+          </td>
+
+          <!-- End Date -->
+          <td class="end-cell">
+            <input *ngIf="isEditing(employee)" type="text" [ngModel]="getDateInputValue(editingEmployee!.ngayKetThuc)" (ngModelChange)="updateEndDate($event)" class="edit-input date-input" placeholder="DD/MM/YYYY" maxlength="10">
+            <span *ngIf="!isEditing(employee)">{{ formatDate(employee.ngayKetThuc) }}</span>
+          </td>
+
+          <!-- Phone -->
+          <td class="phone-cell">
+            <input *ngIf="isEditing(employee)" type="text" [(ngModel)]="editingEmployee!.soDienThoai" class="edit-input">
+            <span *ngIf="!isEditing(employee)" [class.highlighted]="shouldHighlight(employee.soDienThoai)">
+              {{ employee.soDienThoai }}
+            </span>
+          </td>
+
+          <!-- Email -->
+          <td class="email-cell">
+            <input *ngIf="isEditing(employee)" type="email" [(ngModel)]="editingEmployee!.email" class="edit-input">
+            <span *ngIf="!isEditing(employee)" [class.highlighted]="shouldHighlight(employee.email)">
+              {{ employee.email }}
+            </span>
+          </td>
+
+          <!-- Address -->
+          <td class="address-cell">
+            <input *ngIf="isEditing(employee)" type="text" [(ngModel)]="editingEmployee!.diaChi" class="edit-input">
+            <span *ngIf="!isEditing(employee)">{{ employee.diaChi }}</span>
+          </td>
+
+          <!-- Actions -->
+          <td class="actions-cell">
+            <div class="action-buttons">
+              <button *ngIf="!isEditing(employee)" class="edit-btn" (click)="editEmployee(employee)" title="Sửa">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button *ngIf="isEditing(employee)" class="save-btn" (click)="saveEmployee(employee)" title="Lưu">
+                <i class="fa-solid fa-floppy-disk"></i>
+              </button>
+              <button *ngIf="isEditing(employee)" class="cancel-btn" (click)="cancelEdit()" title="Hủy">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <button
+                *ngIf="!employee.ngayKetThuc && !isEditing(employee)"
+                class="stop-btn"
+                (click)="stopWorking(employee)"
+                title="Ngừng làm việc">
+                <i class="fa-solid fa-user-slash"></i>
+              </button>
+              <button
+                *ngIf="!isEditing(employee)"
+                class="delete-btn"
+                (click)="deleteEmployee(employee)"
+                title="Xóa nhân viên">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredEmployees.length === 0" class="empty-row">
+          <td colspan="13" class="empty-message">
+            <i class="fa-solid fa-users"></i>
+            <p>Chưa có nhân viên nào. Nhấn "Thêm nhân viên" để bắt đầu.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

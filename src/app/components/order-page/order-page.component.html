@@ -1,0 +1,184 @@
+<div class="component-wrapper" (scroll)="onScroll($event)">
+  <div class="orders-container">
+    <!-- Sync Status Bar (REST / Polling) -->
+    <div class="websocket-status-bar" *ngIf="!hideFilters">
+      <div class="status-indicators">
+        <span class="status-item rest-sync" title="Polling / Manual sync">
+          <mat-icon>cloud_sync</mat-icon>
+          REST sync
+        </span>
+        <span class="status-item">
+          <mat-icon>sync</mat-icon>
+          Cập nhật: {{ getLastSyncTime() }}
+        </span>
+        <span class="status-item" *ngIf="isCurrentlySyncing()">
+          <mat-icon class="spinning">sync</mat-icon>
+          Đang đồng bộ...
+        </span>
+      </div>
+      <div class="sync-actions">
+        <button mat-button (click)="manualSync()" [disabled]="isLoading || isCurrentlySyncing()" class="sync-button">
+          <mat-icon [class.spinning]="isCurrentlySyncing()">{{ isCurrentlySyncing() ? 'sync' : 'sync' }}</mat-icon>
+          {{ isCurrentlySyncing() ? 'Đang đồng bộ...' : 'Đồng bộ' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Search and Filters Section -->
+    <div class="filters-section" *ngIf="!hideFilters">
+      <!-- Search Bar -->
+      <mat-form-field appearance="outline">
+        <mat-label>Mã đơn hàng/tên khách hàng</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (keyup)="applyFilters()"
+          placeholder="Tìm theo mã đơn hàng hoặc tên khách hàng">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tên/mã sản phẩm</mat-label>
+        <input matInput [(ngModel)]="searchTermProduct" (keyup)="applyFilters()"
+          placeholder="Tìm theo tên hoặc mã sản phẩm">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <!-- Date Filter -->
+      <!-- <div class="date-filters"> -->
+      <mat-form-field appearance="outline">
+        <mat-label>Chọn ngày</mat-label>
+        <input matInput [matDatepicker]="datePicker" [(ngModel)]="selectedDate" (dateChange)="onDateChange($event)"
+          placeholder="Chọn ngày" readonly>
+        <mat-datepicker-toggle matSuffix [for]="datePicker"></mat-datepicker-toggle>
+        <mat-datepicker #datePicker></mat-datepicker>
+      </mat-form-field>
+      <!-- </div> -->
+
+      <!-- Customer Filter -->
+      <mat-form-field appearance="outline" class="customer-filter">
+        <mat-label>Khách hàng</mat-label>
+        <mat-select [(ngModel)]="selectedCustomer" (selectionChange)="applyFilters()">
+          <mat-option value="">Tất cả</mat-option>
+          <mat-option *ngFor="let customer of customers" [value]="customer">
+            {{ customer || 'Khách lẻ' }}
+          </mat-option>
+        </mat-select>
+
+      </mat-form-field>
+      
+      <div class="date-filters">
+        <button mat-button (click)="deleteOrdersByFilter()">
+          <mat-icon>delete_all</mat-icon>
+          Xóa theo filter
+        </button>
+        <!-- Clear Filters Button -->
+        <button mat-button (click)="clearFilters()">
+          <mat-icon>clear_all</mat-icon>
+          Xóa bộ lọc
+        </button>
+
+      </div>
+    </div>
+    <!-- Small corner loader shown while background operations run -->
+    <div *ngIf="isLoading" class="corner-loading" aria-hidden="true">
+      <div class="spinner small"></div>
+      <span class="sr-only">Đang tải dữ liệu...</span>
+    </div>
+
+    <!-- Sync Mode Indicator (REST-only) -->
+    <div class="realtime-indicator" *ngIf="!hideFilters">
+      <mat-icon class="pulse">cloud_queue</mat-icon>
+      <span>Polling / Manual sync</span>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="table-container">
+      <table mat-table [dataSource]="pagedOrders">
+        <!-- ID Column -->
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Mã đơn hàng</th>
+          <td mat-cell class="content-hd" *matCellDef="let order">{{ order.id }}</td>
+        </ng-container>
+
+        <!-- Customer Column -->
+        <ng-container matColumnDef="customer">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Khách hàng</th>
+          <td mat-cell *matCellDef="let order" class="content-hd">
+            {{ order.customer?.Name || 'Khách lẻ' }}
+          </td>
+        </ng-container>
+
+        <!-- Date Column -->
+        <ng-container matColumnDef="createdDate">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Ngày tạo</th>
+          <td mat-cell *matCellDef="let order" class="content-hd">
+            {{ formatDate(order.createdDate)}}
+          </td>
+        </ng-container>
+        <!-- Pickup Column -->
+        <ng-container matColumnDef="pickupTime">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Lấy hàng</th>
+          <td mat-cell *matCellDef="let order" class="content-hd">
+            <span *ngIf="!order.wantDelivery">
+              {{ order.desiredPickupDate ? formatDateShort(order.desiredPickupDate) : '' }}
+              <span *ngIf="order.desiredPickupTime"> {{ order.desiredPickupTime }}</span>
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Delivery Column -->
+        <ng-container matColumnDef="deliveryTime">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Giao hàng</th>
+          <td mat-cell *matCellDef="let order" class="content-hd">
+            <span *ngIf="order.wantDelivery">
+              {{ order.desiredDeliveryDate ? formatDateShort(order.desiredDeliveryDate) : '' }}
+              <span *ngIf="order.desiredDeliveryTime"> {{ order.desiredDeliveryTime }}</span>
+            </span>
+          </td>
+        </ng-container>
+        <!-- Date Column -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Trạng thái</th>
+          <td mat-cell *matCellDef="let order" class="content-hd">
+            <span class="status-badge" [class]="'status-' + (order.status || 'pending')">
+              {{ getStatusText(order.status) }}
+            </span>
+          </td>
+        </ng-container>
+        <!-- Total Column -->
+        <ng-container matColumnDef="totalPrice">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Tổng tiền</th>
+          <td mat-cell *matCellDef="let order" class="content-hd">{{ order.totalPrice | currency:'VND' }}</td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="sticky">Thao tác</th>
+          <td mat-cell *matCellDef="let order">
+            <div class="action-buttons">
+              <button mat-icon-button (click)="viewOrder(order)">
+                <mat-icon class="icon">visibility</mat-icon>
+              </button>
+              <button mat-icon-button (click)="printOrder(order)">
+                <mat-icon class="icon">print</mat-icon>
+              </button>
+              <button mat-icon-button (click)="cancelOrder(order)"
+                [disabled]="order.status === 'canceled' || order.status === 'checked'"
+                [matTooltip]="order.status === 'canceled' ? 'Đã hủy' : order.status === 'checked' ? 'Đã xử lý' : 'Hủy đơn hàng'">
+                <mat-icon class="icon" [class.canceled]="order.status === 'canceled'">cancel</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+    </div>
+    <div class="pagination" *ngIf="totalPages > 1">
+      <button (click)="prevPage()" [disabled]="currentPage === 1"><i class="fa-solid fa-arrow-left icon"></i></button>
+      <span>&nbsp;&nbsp;{{currentPage}} / {{totalPages}}&nbsp;</span>
+      <button (click)="nextPage()" [disabled]="currentPage === totalPages"><i
+          class="fa-solid fa-arrow-right icon"></i></button>
+    </div>
+  </div>
+</div>

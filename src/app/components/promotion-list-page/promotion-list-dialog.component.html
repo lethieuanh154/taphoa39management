@@ -1,0 +1,80 @@
+<h2 mat-dialog-title>
+  <mat-icon>local_offer</mat-icon>
+  QUẢN LÝ KHUYẾN MẠI
+</h2>
+
+<mat-dialog-content class="dialog-content">
+  <div class="toolbar-row">
+    <button mat-raised-button color="primary" (click)="onCreate()">
+      <mat-icon>add</mat-icon>
+      Thêm mới
+    </button>
+    <button mat-button (click)="loadPromotions()" matTooltip="Tải lại">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" class="loading">Đang tải...</div>
+
+  <div *ngIf="!isLoading && promotions.length === 0" class="empty">
+    Chưa có khuyến mại nào...
+  </div>
+
+  <div class="promo-list" *ngIf="!isLoading && promotions.length > 0">
+    <div class="promo-card" *ngFor="let promo of promotions"
+         [class.disabled]="!promo.isEnabled"
+         [class.expired]="isExpired(promo)">
+
+      <div class="promo-header">
+        <span *ngFor="let badge of getTypeBadges(promo)"
+              class="type-badge" [ngClass]="badge.cssClass">
+          {{ badge.label }}
+        </span>
+        <span class="promo-name">{{ promo.name }}</span>
+        <mat-slide-toggle
+          [(ngModel)]="promo.isEnabled"
+          (change)="onToggle(promo)"
+          color="primary"
+          class="toggle">
+        </mat-slide-toggle>
+      </div>
+
+      <div class="promo-body">
+        <div class="promo-info">
+          <div class="info-row">
+            <span class="label">Sản phẩm áp dụng:</span>
+            <span>{{ promo.targetProductCode }} - {{ promo.targetProductName }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Điều kiện:</span>
+            <span>Mua >= {{ promo.minQuantity }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Nội dung:</span>
+            <span>{{ getPromoDetail(promo) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Thời gian:</span>
+            <span [class.text-red]="isExpired(promo)">
+              {{ formatDate(promo.fromDate) }} - {{ formatDate(promo.toDate) }}
+              <span *ngIf="isExpired(promo)">(Hết hạn)</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="promo-actions">
+          <button mat-icon-button (click)="onEdit(promo)" matTooltip="Sửa">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="onDelete(promo)" matTooltip="Xóa" color="warn">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onClose()">Đóng</button>
+</mat-dialog-actions>

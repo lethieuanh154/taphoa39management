@@ -1,0 +1,195 @@
+<body autocorrect="off" contenteditable="true">
+    <style type="text/css">
+        .printBox {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+        }
+
+        table {
+            page-break-inside: auto;
+            border-collapse: collapse;
+
+        }
+
+        table td {
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+            margin-top: -5px;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <div class="printBox" #printSection>
+    
+
+        <div style="padding:10px 0 0; text-align:center"><strong style="font-size:12px">HÓA ĐƠN ĐẶT HÀNG</strong></div>
+
+        <table style="width:100%">
+            <tbody>
+                <tr>
+                    <td style="font-size:11px; text-align:center">Số HĐ: {{ order.id }}</td>
+                </tr>
+                <tr>
+                    <td style="font-size:11px; text-align:center">
+                        {{ formatVietnameseDate() }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table style="margin:10px 0 15px; width:100%">
+            <tbody>
+                <tr>
+                    <td style="font-size:11px">Khách hàng: {{ order.customer?.Name||'Khách lẻ' }}</td>
+                </tr>
+                <tr>
+                    <td style="font-size:11px">SĐT: {{ order.customer?.ContactNumber }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table cellpadding="3" style="width:98%; table-layout:fixed">
+            <colgroup>
+                <col style="width:40%">
+                <col style="width:10%">
+                <col style="width:25%">
+                <col style="width:25%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <td style="border-bottom:1px solid black; border-top:1px solid black"><span
+                            style="font-size:11px"><strong>Đơn giá</strong></span></td>
+                    <td style="border-bottom:1px solid black; border-top:1px solid black; text-align:center">
+                        <span style="font-size:11px"><strong>SL</strong></span>
+                    </td>
+                    <td style="border-bottom:1px solid black; border-top:1px solid black; text-align:center">
+                        <strong><span style="font-size:11px">ĐVT</span></strong>
+                    </td>
+                    <td style="border-bottom:1px solid black; border-top:1px solid black; text-align:right">
+                        <span style="font-size:11px"><strong>Thành tiền</strong></span>
+                    </td>
+                </tr>
+            </thead>
+            <tbody *ngFor="let item of order.cartItems ; let i = index">
+
+
+                <tr>
+                    <td colspan="4" style="padding-top:3px"><span style="font-size:11px">
+                            <span style="font-family:Arial,Helvetica,sans-serif">{{ order.cartItems[i].product.Name
+                                }}<ng-container *ngIf="getProductAttributeValue(i) as attrValue"> - {{ attrValue
+                                    }}</ng-container>
+                                <span *ngIf="order.cartItems[i].isGift" style="color:#2e7d32;font-weight:bold;"> [Tặng]</span>
+                            </span>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border-bottom:1px dashed black">
+                        <span style="font-size:11px">
+                            <span style="font-family:Arial,Helvetica,sans-serif">
+                                <ng-container *ngIf="order.cartItems[i].unitPriceSaleOff > 0; else basePriceOnly">
+                                    <s>{{ order.cartItems[i].product.BasePrice | number:'1.0-0' }}</s>
+                                    &nbsp;
+                                    <span style="font-family:Arial,Helvetica,sans-serif">
+                                        {{ order.cartItems[i].product.BasePrice-order.cartItems[i].unitPriceSaleOff
+                                        | number:'1.0-0' }}
+                                    </span>
+                                </ng-container>
+                                <ng-template #basePriceOnly>
+                                    {{ order.cartItems[i].product.BasePrice | number:'1.0-0' }}
+                                </ng-template>
+                            </span>
+                        </span>
+                    </td>
+                    <td style="border-bottom:1px dashed black; text-align:center">
+                        <span style="font-size:11px">{{ order.cartItems[i].quantity}} </span>
+
+                    </td>
+                    <td style="border-bottom:1px dashed black; text-align:center"><span style="font-size:11px"><span
+                                style="font-family:Arial,Helvetica,sans-serif">{{ order.cartItems[i].product.Unit}}
+                            </span>
+                        </span>
+                    </td>
+                    <td style="border-bottom:1px dashed black; text-align:right">
+                        <span style="font-size:11px">
+                            <ng-container *ngIf="order.cartItems[i].isGift; else notGiftTotal">
+                                0
+                            </ng-container>
+                            <ng-template #notGiftTotal>
+                                <ng-container *ngIf="order.cartItems[i].unitPriceSaleOff > 0; else normalTotal">
+                                    {{
+                                    (order.cartItems[i].product.BasePrice - order.cartItems[i].unitPriceSaleOff) *
+                                    order.cartItems[i].quantity
+                                    | number:'1.0-0'
+                                    }}
+                                </ng-container>
+                                <ng-template #normalTotal>
+                                    {{ order.cartItems[i].product.BasePrice * order.cartItems[i].quantity |
+                                    number:'1.0-0' }}
+                                </ng-template>
+                            </ng-template>
+                        </span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table border="0" cellpadding="3" cellspacing="0" style="margin-top:0px; width:98%; table-layout:fixed">
+            <colgroup>
+                <col style="width:40%">
+                <col style="width:10%">
+                <col style="width:25%">
+                <col style="width:25%">
+            </colgroup>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="font-weight:bold; text-align:right; text-wrap:nowrap"><span style="font-size:12px">Tổng
+                            tiền hàng:</span></td>
+                    <td style="font-weight:bold; text-align:right"><span style="font-size:14px">{{getItemsSubtotal() |
+                            number:'1.0-0'}}</span></td>
+                </tr>
+                <tr *ngIf="order.discountAmount > 0">
+                    <td colspan="3" style="font-weight:bold; text-align:right; text-wrap:nowrap"><span style="font-size:12px">
+                            Chiết khấu: </span></td>
+                    <td style="font-weight:bold; text-align:right"><span style="font-size:14px">
+                            {{order.discountAmount| number:'1.0-0'}}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="font-weight:bold; text-align:right; text-wrap:nowrap"><span style="font-size:12px">Tổng
+                            thanh toán:</span></td>
+                    <td style="font-weight:bold; text-align:right"><span
+                            style="font-size:14px">{{getItemsSubtotal()-order.discountAmount | number:'1.0-0'}}</span>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="4" style="text-align:center; padding-top:10px;">
+                        <img [src]="getQrImageUrl()" alt="QR thanh toán" style="width:80px; height:80px;" />
+                        <div style="font-size:8px; margin-top:4px;">Quét QR để thanh toán</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="text-align:center; text-wrap:nowrap;font-size:10px;font-style:italic;">
+                        <u>*Lưu ý:</u>
+                        <br />
+                        <br>Quý khách vui lòng không đổi trả sau khi đã thanh toán.<br> Xin cảm ơn!
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align:center; text-wrap:nowrap;font-size:10px;">
+                        Hãy đăng ký thành viên và đặt hàng online tại:<br> <span style="font-weight:bold;">https://songminhcr.com/</span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</body>

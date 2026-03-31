@@ -1,0 +1,490 @@
+.payroll-container {
+  padding: 24px;
+  background: #f5f5f5;
+  min-height: 100vh;
+  font-size: 12px;
+}
+
+.header {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-field {
+  min-width: 200px;
+}
+
+.section-header {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 8px 8px 0 0;
+  margin-top: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-header h2 {
+  margin: 0;
+  color: #1976d2;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.contractor-section {
+  background: #fff8e1;
+}
+
+.contractor-section h2 {
+  color: #f57c00;
+}
+
+.highlighted {
+  background: #fff9c4;
+  color: #f57f17;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(251, 192, 45, 0.3);
+}
+
+.table-wrapper {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.payroll-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 2000px;
+  table-layout: fixed;
+}
+
+.payroll-table thead {
+  background: #e3f2fd;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.payroll-table th {
+  padding: 8px 4px;
+  text-align: center;
+  font-weight: 600;
+  color: #1976d2;
+  border: 1px solid #e0e0e0;
+  font-size: 10px;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.3;
+}
+
+.payroll-table td {
+  padding: 4px;
+  border: 1px solid #e0e0e0;
+  vertical-align: middle;
+  font-size: 10px;
+  overflow: hidden;
+}
+
+/* Column widths */
+.stt-col {
+  width: 3%;
+}
+
+.name-col {
+  width: 8%;
+}
+
+.position-col {
+  width: 6%;
+}
+
+.input-col {
+  width: 7%;
+}
+
+.calc-col {
+  width: 6.5%;
+  background: #f9f9f9;
+}
+
+.highlight-col {
+  background: #e8f5e9;
+  font-weight: 700;
+}
+
+.action-col {
+  width: 4%;
+}
+
+.code-col {
+  width: 5%;
+}
+
+.hours-col {
+  width: 7%;
+  background: #e3f2fd;
+}
+
+.rate-col {
+  width: 8%;
+}
+
+/* Contractor table specific styles */
+.contractor-table-wrapper {
+  border-radius: 0 0 8px 8px;
+  margin-top: 0;
+}
+
+.contractor-payroll-table {
+  min-width: 1200px;
+}
+
+.contractor-payroll-table thead {
+  background: #fff3e0;
+}
+
+.contractor-payroll-table th {
+  color: #e65100;
+}
+
+.contractor-row:hover {
+  background: #fff8e1;
+}
+
+.hours-cell {
+  background: #e3f2fd;
+  text-align: center;
+}
+
+.hours-value {
+  font-weight: 700;
+  color: #1565c0;
+  font-size: 11px;
+}
+
+.rate-input {
+  background: #fffef7;
+}
+
+.tax-cell {
+  background: #ffebee;
+}
+
+.tax-cell .calc-value {
+  color: #c62828;
+  font-weight: 600;
+}
+
+.contractor-add-btn {
+  background: #ff9800;
+}
+
+.contractor-add-btn:hover {
+  background: #f57c00;
+}
+
+.code-cell {
+  text-align: center;
+  font-weight: 500;
+  color: #555;
+}
+
+/* Row styles */
+.payroll-row {
+  transition: background-color 0.2s ease;
+}
+
+.payroll-row:hover {
+  background: #f5f5f5;
+}
+
+/* Cell styles */
+.stt-cell {
+  text-align: center;
+  font-weight: 600;
+  color: #666;
+}
+
+.name-cell,
+.position-cell {
+  padding: 4px;
+  overflow: hidden;
+}
+
+.name-input,
+.position-input {
+  width: 100%;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: inherit;
+  color: #333;
+  background: #f9f9f9;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.name-input:focus,
+.position-input:focus {
+  outline: none;
+  border-color: #2196f3;
+  background: white;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.input-cell {
+  padding: 4px;
+  overflow: hidden;
+}
+
+.salary-input {
+  width: 100%;
+  max-width: 100%;
+  padding: 4px;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: inherit;
+  color: #333;
+  background: #fffef7;
+  text-align: right;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.salary-input:focus {
+  outline: none;
+  border-color: #2196f3;
+  background: white;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+/* Remove number input arrows */
+.salary-input::-webkit-outer-spin-button,
+.salary-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.salary-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.calc-cell {
+  background: #f9f9f9;
+  text-align: right;
+  padding: 6px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calc-value {
+  font-weight: 500;
+  color: #555;
+  font-size: 10px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.total-cell {
+  background: #e3f2fd;
+}
+
+.total-cell .calc-value {
+  font-weight: 700;
+  color: #1976d2;
+  font-size: 10px;
+}
+
+.total-insurance-cell {
+  background: #fff3e0;
+}
+
+.total-insurance-cell .calc-value {
+  font-weight: 700;
+  color: #f57c00;
+}
+
+.net-salary-cell {
+  background: #e8f5e9;
+}
+
+.highlight-value {
+  font-weight: 700;
+  color: #2e7d32;
+  font-size: 10px;
+}
+
+.action-cell {
+  text-align: center;
+}
+
+.save-btn {
+  background: transparent;
+  border: none;
+  color: #4caf50;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #e8f5e9;
+  transform: scale(1.1);
+}
+
+.save-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.save-btn:disabled {
+  color: #bbb;
+  cursor: not-allowed;
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: #d32f2f;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.delete-btn:hover {
+  background: #ffebee;
+  transform: scale(1.1);
+}
+
+.delete-btn:active {
+  transform: scale(0.95);
+}
+
+/* Add row button */
+.add-row {
+  background: #fafafa;
+}
+
+.add-cell {
+  text-align: center;
+  padding: 16px;
+}
+
+.add-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.add-btn:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.add-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.add-btn i {
+  font-size: 12px;
+}
+
+/* Empty state */
+.empty-row {
+  background: #fafafa;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.empty-message i {
+  font-size: 48px;
+  color: #bbb;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.empty-message p {
+  margin: 0;
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .payroll-container {
+    padding: 12px;
+  }
+
+  .header {
+    padding: 16px;
+  }
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+  .table-wrapper {
+    padding: 12px;
+  }
+
+  .payroll-table {
+    font-size: 10px;
+  }
+
+  .payroll-table th,
+  .payroll-table td {
+    padding: 6px 4px;
+  }
+}

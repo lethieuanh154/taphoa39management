@@ -1,0 +1,154 @@
+<h2 mat-dialog-title>
+  {{ mode === 'create' ? 'Tạo khuyến mại' : 'Sửa khuyến mại' }}
+</h2>
+
+<mat-dialog-content class="dialog-content">
+  <!-- Name -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Tên khuyến mại</mat-label>
+    <input matInput [(ngModel)]="name" placeholder="VD: Mua 1 thùng bia tặng 1 chai">
+  </mat-form-field>
+
+  <!-- Type radio -->
+  <div class="type-checkboxes">
+    <span class="type-label">Loại khuyến mại:</span>
+    <mat-radio-group [(ngModel)]="promoType" color="primary">
+      <mat-radio-button value="gift">Mua hàng tặng hàng</mat-radio-button>
+      <mat-radio-button value="directDiscount">Giảm giá %/VND cho SP</mat-radio-button>
+      <mat-radio-button value="buyAGetB">Mua A được mua B giảm giá</mat-radio-button>
+    </mat-radio-group>
+  </div>
+
+  <!-- Target Product (regular, non-KM) -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Sản phẩm áp dụng (sản phẩm thường)</mat-label>
+    <input matInput
+           [formControl]="targetSearchControl"
+           [matAutocomplete]="targetAuto"
+           placeholder="Tìm sản phẩm thường (không KM)...">
+    <mat-autocomplete #targetAuto="matAutocomplete"
+                      [displayWith]="displayProductFn"
+                      (optionSelected)="onTargetProductSelected($event.option.value)">
+      <mat-option *ngFor="let p of targetFilteredProducts | async" [value]="p">
+        <span class="option-code">{{ p.Code }}</span> - {{ p.Name }}
+      </mat-option>
+    </mat-autocomplete>
+  </mat-form-field>
+
+  <!-- Min Quantity -->
+  <mat-form-field appearance="outline" class="half-width">
+    <mat-label>Số lượng tối thiểu</mat-label>
+    <input matInput type="number" [(ngModel)]="minQuantity" min="1">
+  </mat-form-field>
+
+  <!-- Type 1: Gift - Chọn SP tặng (KM products) -->
+  <ng-container *ngIf="promoType === 'gift'">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Sản phẩm tặng (KM)</mat-label>
+      <input matInput
+             [formControl]="giftSearchControl"
+             [matAutocomplete]="giftAuto"
+             placeholder="Tìm sản phẩm khuyến mại (KM)...">
+      <mat-autocomplete #giftAuto="matAutocomplete"
+                        [displayWith]="displayProductFn"
+                        (optionSelected)="onGiftProductSelected($event.option.value)">
+        <mat-option *ngFor="let p of giftFilteredProducts | async" [value]="p">
+          <span class="option-code">{{ p.Code }}</span> - {{ p.Name }}
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="half-width">
+      <mat-label>Số lượng tặng</mat-label>
+      <input matInput type="number" [(ngModel)]="giftQuantity" min="1">
+    </mat-form-field>
+  </ng-container>
+
+  <!-- Type 2: Direct Discount - Giảm giá %/VND -->
+  <ng-container *ngIf="promoType === 'directDiscount'">
+    <div class="discount-row">
+      <mat-button-toggle-group [(ngModel)]="discountMode" class="discount-toggle">
+        <mat-button-toggle value="%">%</mat-button-toggle>
+        <mat-button-toggle value="VND">VND</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <mat-form-field *ngIf="discountMode === '%'" appearance="outline" class="discount-input">
+        <mat-label>Giảm (%)</mat-label>
+        <input matInput type="number" [(ngModel)]="discountPercent" min="1" max="100">
+      </mat-form-field>
+
+      <mat-form-field *ngIf="discountMode === 'VND'" appearance="outline" class="discount-input">
+        <mat-label>Giá giảm (VND)</mat-label>
+        <input matInput type="number" [(ngModel)]="discountAmount" min="1">
+      </mat-form-field>
+    </div>
+  </ng-container>
+
+  <!-- Type 3: Buy A Get B Discounted - Chọn SP B + giá giảm -->
+  <ng-container *ngIf="promoType === 'buyAGetB'">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Sản phẩm được giảm giá (SP B)</mat-label>
+      <input matInput
+             [formControl]="discountProductSearchControl"
+             [matAutocomplete]="discountProductAuto"
+             placeholder="Tìm sản phẩm được mua giảm giá...">
+      <mat-autocomplete #discountProductAuto="matAutocomplete"
+                        [displayWith]="displayProductFn"
+                        (optionSelected)="onDiscountProductSelected($event.option.value)">
+        <mat-option *ngFor="let p of discountProductFilteredProducts | async" [value]="p">
+          <span class="option-code">{{ p.Code }}</span> - {{ p.Name }}
+          <span style="color:#888; margin-left:8px;">{{ p.BasePrice | number:'1.0-0' }}đ</span>
+        </mat-option>
+      </mat-autocomplete>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="half-width">
+      <mat-label>Số lượng SP B</mat-label>
+      <input matInput type="number" [(ngModel)]="giftQuantity" min="1">
+    </mat-form-field>
+
+    <div class="discount-row">
+      <mat-button-toggle-group [(ngModel)]="discountMode" class="discount-toggle">
+        <mat-button-toggle value="%">%</mat-button-toggle>
+        <mat-button-toggle value="VND">VND</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <mat-form-field *ngIf="discountMode === '%'" appearance="outline" class="discount-input">
+        <mat-label>Giảm (%)</mat-label>
+        <input matInput type="number" [(ngModel)]="discountPercent" min="1" max="100">
+      </mat-form-field>
+
+      <mat-form-field *ngIf="discountMode === 'VND'" appearance="outline" class="discount-input">
+        <mat-label>Giá giảm (VND)</mat-label>
+        <input matInput type="number" [(ngModel)]="discountAmount" min="1">
+      </mat-form-field>
+    </div>
+  </ng-container>
+
+  <!-- Date range -->
+  <div class="date-row">
+    <mat-form-field appearance="outline" class="half-width">
+      <mat-label>Từ ngày</mat-label>
+      <input matInput type="date" [(ngModel)]="fromDate">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="half-width">
+      <mat-label>Đến ngày</mat-label>
+      <input matInput type="date" [(ngModel)]="toDate">
+    </mat-form-field>
+  </div>
+
+  <!-- Options -->
+  <div class="options-row">
+    <mat-slide-toggle [(ngModel)]="isEnabled" color="primary">
+      Kích hoạt
+    </mat-slide-toggle>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Hủy</button>
+  <button mat-raised-button color="primary" (click)="onSave()" [disabled]="isLoading">
+    {{ isLoading ? 'Đang lưu...' : (mode === 'create' ? 'Tạo' : 'Lưu') }}
+  </button>
+</mat-dialog-actions>
