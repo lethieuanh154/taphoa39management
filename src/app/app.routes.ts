@@ -5,13 +5,16 @@ import { WorkSchedulePageComponent } from './components/work-schedule-page/work-
 import { AttendancePageComponent } from './components/attendance-page/attendance-page.component';
 import { PayrollPageComponent } from './components/payroll-page/payroll-page.component';
 import { PromotionListPageComponent } from './components/promotion-list-page/promotion-list-page.component';
+import { LoginPageComponent } from './components/login-page/login-page.component';
+import { authGuard, loginGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  { path: 'orders', component: OrderPageComponent },
-  { path: 'employees', component: EmployeeListPageComponent },
-  { path: 'work-schedule', component: WorkSchedulePageComponent },
-  { path: 'attendance', component: AttendancePageComponent },
-  { path: 'payroll', component: PayrollPageComponent },
-  { path: 'promotions', component: PromotionListPageComponent },
+  { path: 'login', component: LoginPageComponent, canActivate: [loginGuard] },
+  { path: 'orders', component: OrderPageComponent, canActivate: [authGuard] },
+  { path: 'employees', component: EmployeeListPageComponent, canActivate: [authGuard] },
+  { path: 'work-schedule', component: WorkSchedulePageComponent, canActivate: [authGuard] },
+  { path: 'attendance', component: AttendancePageComponent, canActivate: [authGuard] },
+  { path: 'payroll', component: PayrollPageComponent, canActivate: [authGuard] },
+  { path: 'promotions', component: PromotionListPageComponent, canActivate: [authGuard] },
   { path: '', redirectTo: '/orders', pathMatch: 'full' }
 ];

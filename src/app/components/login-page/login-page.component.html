@@ -1,0 +1,33 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>Quản Lý</h1>
+      <p>Đăng nhập để tiếp tục</p>
+    </div>
+
+    <div class="login-content">
+      <div class="error-message" *ngIf="error">
+        <span class="error-icon">⚠️</span>
+        {{ error }}
+      </div>
+
+      <button
+        class="google-btn"
+        (click)="signInWithGoogle()"
+        [disabled]="isLoading"
+      >
+        <img
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          alt="Google"
+          class="google-icon"
+        >
+        <span *ngIf="!isLoading">Đăng nhập với Google</span>
+        <span *ngIf="isLoading">Đang đăng nhập...</span>
+      </button>
+    </div>
+
+    <div class="login-footer">
+      <p>Chỉ những tài khoản được phép mới có thể đăng nhập</p>
+    </div>
+  </div>
+</div>

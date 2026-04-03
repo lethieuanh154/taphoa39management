@@ -1,52 +1,72 @@
-<div class="management-layout" [class.sidebar-collapsed]="sidebarCollapsed">
-  <nav class="sidebar">
-    <div class="sidebar-header">
-      <span class="logo" *ngIf="!sidebarCollapsed">Quản Lý</span>
-      <button class="toggle-btn" (click)="toggleSidebar()">
-        <i class="fa-solid" [ngClass]="sidebarCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
-      </button>
-    </div>
-
-    <a class="nav-item" routerLink="/orders" routerLinkActive="active">
-      <i class="fa-solid fa-cart-shopping"></i>
-      <span class="nav-text" *ngIf="!sidebarCollapsed">Đơn hàng</span>
-    </a>
-
-    <div class="nav-group">
-      <div class="nav-item nav-group-header" (click)="showEmployeeSubmenu = !showEmployeeSubmenu"
-           [class.active]="showEmployeeSubmenu">
-        <i class="fa-solid fa-users"></i>
-        <span class="nav-text" *ngIf="!sidebarCollapsed">Nhân viên</span>
-        <i class="fa-solid fa-chevron-down submenu-arrow" *ngIf="!sidebarCollapsed"
-           [class.rotated]="showEmployeeSubmenu"></i>
-      </div>
-      <div class="submenu" *ngIf="showEmployeeSubmenu && !sidebarCollapsed">
-        <a class="nav-item sub" routerLink="/employees" routerLinkActive="active">
-          <i class="fa-solid fa-list"></i>
-          <span class="nav-text">Danh sách</span>
-        </a>
-        <a class="nav-item sub" routerLink="/work-schedule" routerLinkActive="active">
-          <i class="fa-solid fa-calendar-days"></i>
-          <span class="nav-text">Lịch làm việc</span>
-        </a>
-        <a class="nav-item sub" routerLink="/attendance" routerLinkActive="active">
-          <i class="fa-solid fa-clipboard-check"></i>
-          <span class="nav-text">Chấm công</span>
-        </a>
-        <a class="nav-item sub" routerLink="/payroll" routerLinkActive="active">
-          <i class="fa-solid fa-money-bill-wave"></i>
-          <span class="nav-text">Bảng lương</span>
-        </a>
-      </div>
-    </div>
-
-    <a class="nav-item" routerLink="/promotions" routerLinkActive="active">
-      <i class="fa-solid fa-tags"></i>
-      <span class="nav-text" *ngIf="!sidebarCollapsed">Khuyến mãi</span>
-    </a>
-  </nav>
-
-  <main class="content">
+<ng-container *ngIf="authState$ | async as auth">
+  <!-- Login page: no sidebar -->
+  <ng-container *ngIf="!auth.isAuthenticated">
     <router-outlet></router-outlet>
-  </main>
-</div>
+  </ng-container>
+
+  <!-- Authenticated: sidebar + content -->
+  <div class="management-layout" [class.sidebar-collapsed]="sidebarCollapsed" *ngIf="auth.isAuthenticated">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <span class="logo" *ngIf="!sidebarCollapsed">Quản Lý</span>
+        <button class="toggle-btn" (click)="toggleSidebar()">
+          <i class="fa-solid" [ngClass]="sidebarCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
+        </button>
+      </div>
+
+      <a class="nav-item" routerLink="/orders" routerLinkActive="active">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Đơn hàng</span>
+      </a>
+
+      <div class="nav-group">
+        <div class="nav-item nav-group-header" (click)="showEmployeeSubmenu = !showEmployeeSubmenu"
+             [class.active]="showEmployeeSubmenu">
+          <i class="fa-solid fa-users"></i>
+          <span class="nav-text" *ngIf="!sidebarCollapsed">Nhân viên</span>
+          <i class="fa-solid fa-chevron-down submenu-arrow" *ngIf="!sidebarCollapsed"
+             [class.rotated]="showEmployeeSubmenu"></i>
+        </div>
+        <div class="submenu" *ngIf="showEmployeeSubmenu && !sidebarCollapsed">
+          <a class="nav-item sub" routerLink="/employees" routerLinkActive="active">
+            <i class="fa-solid fa-list"></i>
+            <span class="nav-text">Danh sách</span>
+          </a>
+          <a class="nav-item sub" routerLink="/work-schedule" routerLinkActive="active">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span class="nav-text">Lịch làm việc</span>
+          </a>
+          <a class="nav-item sub" routerLink="/attendance" routerLinkActive="active">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span class="nav-text">Chấm công</span>
+          </a>
+          <a class="nav-item sub" routerLink="/payroll" routerLinkActive="active">
+            <i class="fa-solid fa-money-bill-wave"></i>
+            <span class="nav-text">Bảng lương</span>
+          </a>
+        </div>
+      </div>
+
+      <a class="nav-item" routerLink="/promotions" routerLinkActive="active">
+        <i class="fa-solid fa-tags"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Khuyến mãi</span>
+      </a>
+
+      <!-- User info & Logout -->
+      <div class="sidebar-footer">
+        <div class="user-info" *ngIf="auth.user && !sidebarCollapsed">
+          <img [src]="auth.user.photoURL" alt="" class="user-avatar" *ngIf="auth.user.photoURL">
+          <span class="user-email">{{ auth.user.email }}</span>
+        </div>
+        <button class="nav-item logout-btn" (click)="logout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="nav-text" *ngIf="!sidebarCollapsed">Đăng xuất</span>
+        </button>
+      </div>
+    </nav>
+
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</ng-container>
