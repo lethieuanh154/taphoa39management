@@ -47,6 +47,11 @@
         </div>
       </div>
 
+      <a class="nav-item" routerLink="/delivery" routerLinkActive="active">
+        <i class="fa-solid fa-truck"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Giao hàng</span>
+      </a>
+
       <a class="nav-item" routerLink="/promotions" routerLinkActive="active">
         <i class="fa-solid fa-tags"></i>
         <span class="nav-text" *ngIf="!sidebarCollapsed">Khuyến mãi</span>

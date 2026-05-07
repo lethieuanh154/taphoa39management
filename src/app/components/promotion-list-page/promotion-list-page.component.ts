@@ -8,6 +8,9 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { Promotion } from '../../models/promotion.model';
 import { PromotionService } from '../../services/promotion.service';
 import { PromotionDialogComponent, PromotionDialogData } from '../promotion-dialog/promotion-dialog.component';
@@ -25,13 +28,19 @@ import { environment } from '../../../environments/environment';
     MatSnackBarModule,
     MatTooltipModule,
     FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonToggleModule,
   ],
   templateUrl: './promotion-list-page.component.html',
   styleUrls: ['./promotion-list-dialog.component.css'],
 })
 export class PromotionListPageComponent implements OnInit {
   promotions: Promotion[] = [];
+  filteredPromotions: Promotion[] = [];
   isLoading = false;
+  searchText = '';
+  filterType: 'all' | 'gift' | 'directDiscount' | 'buyAGetB' = 'all';
 
   constructor(
     private dialog: MatDialog,
@@ -48,7 +57,10 @@ export class PromotionListPageComponent implements OnInit {
     this.isLoading = true;
     this.promotionService.getAllPromotions(true).subscribe({
       next: (promos) => {
-        this.promotions = promos;
+        this.promotions = promos.sort((a, b) =>
+          new Date(b.createdDate || 0).getTime() - new Date(a.createdDate || 0).getTime()
+        );
+        this.applyFilter();
         this.isLoading = false;
       },
       error: (err) => {
@@ -57,6 +69,39 @@ export class PromotionListPageComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  applyFilter() {
+    let result = this.promotions;
+
+    if (this.filterType !== 'all') {
+      result = result.filter(p => {
+        const type = this.getPromoType(p);
+        return type === this.filterType;
+      });
+    }
+
+    if (this.searchText.trim()) {
+      const search = this.searchText.toLowerCase().trim();
+      result = result.filter(p =>
+        p.name.toLowerCase().includes(search) ||
+        (p.targetProductCode || '').toLowerCase().includes(search) ||
+        (p.targetProductName || '').toLowerCase().includes(search) ||
+        (p.giftProductCode || '').toLowerCase().includes(search) ||
+        (p.giftProductName || '').toLowerCase().includes(search)
+      );
+    }
+
+    this.filteredPromotions = result;
+  }
+
+  private getPromoType(promo: Promotion): 'gift' | 'directDiscount' | 'buyAGetB' {
+    const hasGift = promo.hasGift ?? promo.type === 'gift';
+    const hasDiscount = (promo.hasPercentDiscount ?? promo.type === 'percentage')
+                     || (promo.hasFixedDiscount ?? promo.type === 'fixed_amount');
+    if (hasGift) return 'gift';
+    if (hasDiscount && promo.giftProductId) return 'buyAGetB';
+    return 'directDiscount';
   }
 
   getTypeBadges(promo: Promotion): { label: string; cssClass: string }[] {
@@ -148,6 +193,7 @@ export class PromotionListPageComponent implements OnInit {
     this.promotionService.deletePromotion(promo.id).subscribe({
       next: () => {
         this.promotions = this.promotions.filter(p => p.id !== promo.id);
+        this.applyFilter();
         this.snackBar.open('Đã xóa khuyến mại', 'OK', { duration: 2000 });
       },
       error: (err) => {

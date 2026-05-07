@@ -13,7 +13,9 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { Observable } from 'rxjs';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { Observable, firstValueFrom } from 'rxjs';
 import { map, startWith, debounceTime } from 'rxjs/operators';
 import { Promotion } from '../../models/promotion.model';
 import { PromotionService } from '../../services/promotion.service';
@@ -52,6 +54,8 @@ interface ProductOption {
     MatSnackBarModule,
     MatSlideToggleModule,
     MatButtonToggleModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
   templateUrl: './promotion-dialog.component.html',
   styleUrls: ['./promotion-dialog.component.css'],
@@ -69,8 +73,8 @@ export class PromotionDialogComponent implements OnInit {
   discountPercent: number | null = null;
   discountAmount: number | null = null;
   giftQuantity = 1;
-  fromDate = '';
-  toDate = '';
+  fromDate: Date | null = null;
+  toDate: Date | null = null;
   isEnabled = true;
 
   // Target product search
@@ -139,11 +143,10 @@ export class PromotionDialogComponent implements OnInit {
 
     // Set default dates for create mode
     if (this.mode === 'create') {
-      const now = new Date();
-      this.fromDate = now.toISOString().slice(0, 10);
-      const nextMonth = new Date(now);
+      this.fromDate = new Date();
+      const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
-      this.toDate = nextMonth.toISOString().slice(0, 10);
+      this.toDate = nextMonth;
     }
   }
 
@@ -153,32 +156,48 @@ export class PromotionDialogComponent implements OnInit {
   }
 
   private async loadProducts() {
+    let products: any[] = [];
+
+    // Try IndexedDB first
     try {
-      const products = await this.indexedDBService.getAll<any>(
+      products = await this.indexedDBService.getAll<any>(
         this.dbName, this.dbVersion, this.storeName
       );
-      const activeProducts = products.filter((p: any) => !p.isDeleted && p.isActive);
-
-      this.regularProducts = [];
-      this.kmProducts = [];
-
-      for (const p of activeProducts) {
-        const option: ProductOption = {
-          Id: p.Id,
-          Code: p.Code || '',
-          Name: p.FullName || p.Name || '',
-          Image: p.Image || '',
-          Cost: p.Cost || 0,
-          BasePrice: p.BasePrice || 0,
-        };
-        if (this.isKmProduct(p)) {
-          this.kmProducts.push(option);
-        } else {
-          this.regularProducts.push(option);
-        }
-      }
     } catch (e) {
-      console.error('Failed to load products from IndexedDB:', e);
+      console.warn('IndexedDB not available, will fallback to API:', e);
+    }
+
+    // Fallback: load from API if IndexedDB is empty or failed
+    if (!products || products.length === 0) {
+      try {
+        const url = `${environment.domainUrl}/api/firebase/get/products`;
+        products = await firstValueFrom(this.http.get<any[]>(url));
+      } catch (e) {
+        console.error('Failed to load products from API:', e);
+        this.snackBar.open('Không tải được danh sách sản phẩm', 'OK', { duration: 3000 });
+        return;
+      }
+    }
+
+    const activeProducts = products.filter((p: any) => !p.isDeleted && p.isActive);
+
+    this.regularProducts = [];
+    this.kmProducts = [];
+
+    for (const p of activeProducts) {
+      const option: ProductOption = {
+        Id: p.Id,
+        Code: p.Code || '',
+        Name: p.FullName || p.Name || '',
+        Image: p.Image || '',
+        Cost: p.Cost || 0,
+        BasePrice: p.BasePrice || 0,
+      };
+      if (this.isKmProduct(p)) {
+        this.kmProducts.push(option);
+      } else {
+        this.regularProducts.push(option);
+      }
     }
   }
 
@@ -236,8 +255,8 @@ export class PromotionDialogComponent implements OnInit {
     this.discountPercent = promo.discountPercent ?? null;
     this.discountAmount = promo.discountAmount ?? null;
     this.giftQuantity = promo.giftQuantity ?? 1;
-    this.fromDate = promo.fromDate ? promo.fromDate.slice(0, 10) : '';
-    this.toDate = promo.toDate ? promo.toDate.slice(0, 10) : '';
+    this.fromDate = promo.fromDate ? new Date(promo.fromDate) : null;
+    this.toDate = promo.toDate ? new Date(promo.toDate) : null;
     this.isEnabled = promo.isEnabled;
 
     // Set target product
@@ -317,8 +336,8 @@ export class PromotionDialogComponent implements OnInit {
       targetProductCode: this.selectedTargetProduct.Code,
       targetProductName: this.selectedTargetProduct.Name,
       minQuantity: this.minQuantity || 1,
-      fromDate: this.fromDate ? new Date(this.fromDate).toISOString() : '',
-      toDate: this.toDate ? new Date(this.toDate + 'T23:59:59').toISOString() : '',
+      fromDate: this.fromDate ? this.fromDate.toISOString() : '',
+      toDate: this.toDate ? new Date(this.toDate.getFullYear(), this.toDate.getMonth(), this.toDate.getDate(), 23, 59, 59).toISOString() : '',
       isEnabled: this.isEnabled,
     };
 

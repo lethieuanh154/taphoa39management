@@ -1,6 +1,8 @@
 export const environment = {
   production: false,
   domainUrl: 'http://127.0.0.1:5000',
+  storeLat: 16.019693,
+  storeLng: 108.197694,
   // Firebase Auth project (quanlysongminh - shared with TapHoa39BanHang for same login)
   firebase: {
     apiKey: "AIzaSyD6BQL55uF9zGLG0daKiZln8knS8_BoXS8",

@@ -5,12 +5,14 @@ import { WorkSchedulePageComponent } from './components/work-schedule-page/work-
 import { AttendancePageComponent } from './components/attendance-page/attendance-page.component';
 import { PayrollPageComponent } from './components/payroll-page/payroll-page.component';
 import { PromotionListPageComponent } from './components/promotion-list-page/promotion-list-page.component';
+import { DeliveryRoutePageComponent } from './components/delivery-route-page/delivery-route-page.component';
 import { LoginPageComponent } from './components/login-page/login-page.component';
 import { authGuard, loginGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginPageComponent, canActivate: [loginGuard] },
   { path: 'orders', component: OrderPageComponent, canActivate: [authGuard] },
+  { path: 'delivery', component: DeliveryRoutePageComponent, canActivate: [authGuard] },
   { path: 'employees', component: EmployeeListPageComponent, canActivate: [authGuard] },
   { path: 'work-schedule', component: WorkSchedulePageComponent, canActivate: [authGuard] },
   { path: 'attendance', component: AttendancePageComponent, canActivate: [authGuard] },

@@ -28,6 +28,32 @@ h2[mat-dialog-title] {
   align-items: center;
 }
 
+.filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 2px 0;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.type-filter {
+  flex-shrink: 0;
+}
+
+.type-filter .mat-button-toggle-label-content {
+  font-size: 12px;
+  padding: 0 10px;
+}
+
 .loading, .empty {
   text-align: center;
   padding: 40px;

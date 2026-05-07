@@ -1,0 +1,127 @@
+<div class="delivery-page">
+  <!-- Header -->
+  <div class="delivery-header">
+    <h2>Giao hàng</h2>
+    <div class="header-controls">
+      <div class="control-group">
+        <label>Ngày giao</label>
+        <input type="date" [(ngModel)]="selectedDate" (change)="onDateChange()" />
+      </div>
+      <div class="control-group">
+        <label>Tài xế</label>
+        <input type="text" [(ngModel)]="driverName" (blur)="onDriverNameChange()"
+               placeholder="Tên người giao" />
+      </div>
+      <div class="control-group">
+        <label>Giờ xuất phát</label>
+        <input type="time" [(ngModel)]="startTime" />
+      </div>
+      <button class="btn btn-primary" (click)="loadOrders()" [disabled]="isLoading">
+        <i class="fa-solid fa-sync" [class.fa-spin]="isLoading"></i> Tải đơn
+      </button>
+      <button class="btn btn-accent" (click)="optimizeRoute()"
+              [disabled]="!orders.length || isRouteActive">
+        <i class="fa-solid fa-route"></i> Tối ưu lộ trình
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary bar -->
+  <div class="summary-bar" *ngIf="orders.length">
+    <div class="stat">
+      <span class="stat-value">{{ orders.length }}</span>
+      <span class="stat-label">đơn hàng</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">{{ totalDistance | number:'1.1-1' }} km</span>
+      <span class="stat-label">tổng quãng đường</span>
+    </div>
+    <div class="stat" *ngIf="totalDuration">
+      <span class="stat-value">{{ totalDuration }} phút</span>
+      <span class="stat-label">dự kiến</span>
+    </div>
+    <div class="stat" *ngIf="isRouteActive">
+      <span class="stat-value">{{ deliveredCount }}/{{ orders.length }}</span>
+      <span class="stat-label">đã giao</span>
+    </div>
+    <button class="btn btn-success start-btn" (click)="startDelivery()"
+            *ngIf="!isRouteActive && orders.length"
+            [disabled]="!driverName.trim()">
+      <i class="fa-solid fa-play"></i> Bắt đầu giao hàng
+    </button>
+    <button class="btn btn-secondary" (click)="completeRoute()"
+            *ngIf="allDelivered && route">
+      <i class="fa-solid fa-check-double"></i> Hoàn thành
+    </button>
+  </div>
+
+  <!-- Main content -->
+  <div class="delivery-content" *ngIf="orders.length; else emptyState">
+    <!-- Order list -->
+    <div class="order-list-panel">
+      <div class="order-list" cdkDropList (cdkDropListDropped)="onDrop($event)"
+           [cdkDropListDisabled]="isRouteActive">
+        <div class="order-card" *ngFor="let order of orders; let i = index"
+             cdkDrag
+             [class.active]="i === activeOrderIndex"
+             [class.delivered]="order.status === 'delivered'"
+             [class.failed]="order.status === 'failed'"
+             (click)="selectOrder(i)">
+
+          <div class="order-sequence" cdkDragHandle>
+            <span class="seq-num">{{ order.sequence }}</span>
+          </div>
+
+          <div class="order-info">
+            <div class="order-customer">
+              <strong>{{ order.customerName }}</strong>
+              <span class="order-phone">{{ order.customerPhone }}</span>
+            </div>
+            <div class="order-address">{{ order.address }}</div>
+            <div class="order-meta">
+              <span class="meta-tag">📏 {{ order.distanceFromPrev }}km</span>
+              <span class="meta-tag" *ngIf="order.estimatedArrival">⏰ {{ order.estimatedArrival }}</span>
+              <span class="meta-tag" *ngIf="order.note">📝 {{ order.note }}</span>
+            </div>
+          </div>
+
+          <div class="order-actions">
+            <span class="status-badge" [attr.data-status]="order.status">
+              {{ statusLabels[order.status] }}
+            </span>
+
+            <ng-container *ngIf="isRouteActive && order.status !== 'delivered' && order.status !== 'failed'">
+              <button class="btn btn-sm btn-advance" (click)="advanceStatus(i); $event.stopPropagation()">
+                {{ getNextStatusLabel(order.status) }} →
+              </button>
+              <button class="btn btn-sm btn-fail" (click)="markFailed(i); $event.stopPropagation()"
+                      *ngIf="order.status !== 'pending'">
+                ✕
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div class="map-panel">
+      <app-delivery-map
+        [orders]="orders"
+        [activeOrderIndex]="activeOrderIndex"
+        [showRoute]="true">
+      </app-delivery-map>
+    </div>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty-state" *ngIf="!isLoading">
+      <i class="fa-solid fa-truck fa-3x"></i>
+      <p>Chọn ngày và bấm <strong>Tải đơn</strong> để xem đơn giao hàng</p>
+    </div>
+    <div class="loading-state" *ngIf="isLoading">
+      <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+      <p>Đang tải...</p>
+    </div>
+  </ng-template>
+</div>

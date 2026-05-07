@@ -129,12 +129,16 @@
   <div class="date-row">
     <mat-form-field appearance="outline" class="half-width">
       <mat-label>Từ ngày</mat-label>
-      <input matInput type="date" [(ngModel)]="fromDate">
+      <input matInput [matDatepicker]="fromPicker" [(ngModel)]="fromDate" placeholder="Chọn ngày">
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker"></mat-datepicker-toggle>
+      <mat-datepicker #fromPicker></mat-datepicker>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="half-width">
       <mat-label>Đến ngày</mat-label>
-      <input matInput type="date" [(ngModel)]="toDate">
+      <input matInput [matDatepicker]="toPicker" [(ngModel)]="toDate" placeholder="Chọn ngày">
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker"></mat-datepicker-toggle>
+      <mat-datepicker #toPicker></mat-datepicker>
     </mat-form-field>
   </div>
 
