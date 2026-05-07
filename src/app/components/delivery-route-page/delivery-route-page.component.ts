@@ -94,7 +94,7 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
 
     try {
       const date = new Date(this.selectedDate);
-      const rawOrders = await this.orderService.getOrdersByDateFromDB(date);
+      const rawOrders = await this.orderService.getOrdersByDeliveryDateFromDB(date);
       this.orders = this.routeService.ordersToDeliveryOrders(
         rawOrders.filter(o => o.wantDelivery && o.status !== 'canceled')
       );

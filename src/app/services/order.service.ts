@@ -185,6 +185,16 @@ export class OrderService {
     });
   }
 
+  async getOrdersByDeliveryDateFromDB(date: Date): Promise<any[]> {
+    await this.initDB();
+    const allOrders = await this.getAllOrdersFromDB();
+    const y = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${mo}-${d}`;
+    return allOrders.filter(order => order.desiredDeliveryDate === dateStr);
+  }
+
   private async initializeSocketIfNeeded(): Promise<void> {
     this.orderWebSocket.connect();
   }
