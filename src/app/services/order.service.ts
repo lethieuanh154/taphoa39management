@@ -165,6 +165,12 @@ export class OrderService {
     });
   }
 
+  getOrdersByDeliveryDateFromAPI(dateStr: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.domainUrl}/api/firebase/orders/delivery-date`, {
+      params: { date: dateStr }
+    }).pipe(catchError(() => of([])));
+  }
+
   // IndexedDB filter by date
   async getOrdersByDateFromDB(date: Date): Promise<any[]> {
     await this.initDB();

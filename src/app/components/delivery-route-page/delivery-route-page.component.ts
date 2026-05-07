@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { OrderService } from '../../services/order.service';
 import { DeliveryRouteService } from '../../services/delivery-route.service';
 import { DeliveryTrackingService } from '../../services/delivery-tracking.service';
@@ -94,7 +94,18 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
 
     try {
       const date = new Date(this.selectedDate);
-      const rawOrders = await this.orderService.getOrdersByDeliveryDateFromDB(date);
+      let rawOrders = await this.orderService.getOrdersByDeliveryDateFromDB(date);
+
+      if (!rawOrders.length) {
+        const apiOrders = await firstValueFrom(
+          this.orderService.getOrdersByDeliveryDateFromAPI(this.selectedDate)
+        );
+        for (const order of apiOrders) {
+          await this.orderService.addOrderToDB(order);
+        }
+        rawOrders = apiOrders;
+      }
+
       this.orders = this.routeService.ordersToDeliveryOrders(
         rawOrders.filter(o => o.wantDelivery && o.status !== 'canceled')
       );
