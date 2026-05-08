@@ -4,6 +4,8 @@ import {
   ChangeDetectionStrategy
 } from '@angular/core';
 import * as L from 'leaflet';
+import { Subscription } from 'rxjs';
+import { timeout } from 'rxjs/operators';
 import { DeliveryOrder, DeliveryStatus } from '../../models/delivery.model';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
@@ -60,7 +62,8 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   private map: L.Map | null = null;
   private markers: L.Marker[] = [];
   private routeLine: L.Polyline | null = null;
-  private storeMarker: L.Marker | null = null;
+  private routeSub: Subscription | null = null;
+  private polylineCoords: [number, number][] = [];
 
   constructor(private http: HttpClient) {}
 
@@ -76,6 +79,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   ngOnDestroy(): void {
+    this.routeSub?.unsubscribe();
     this.map?.remove();
     this.map = null;
   }
@@ -99,7 +103,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       iconSize: [32, 32],
       iconAnchor: [16, 16]
     });
-    this.storeMarker = L.marker([environment.storeLat, environment.storeLng], { icon: storeIcon })
+    L.marker([environment.storeLat, environment.storeLng], { icon: storeIcon })
       .addTo(this.map)
       .bindPopup('<strong>Cửa hàng Song Minh</strong><br>25 Nguyễn Phước Tần, Cẩm Lệ');
   }
@@ -112,6 +116,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     this.markers = [];
     this.routeLine?.remove();
     this.routeLine = null;
+    this.polylineCoords = [];
 
     if (!this.orders.length) return;
 
@@ -119,6 +124,8 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     const bounds = L.latLngBounds([[environment.storeLat, environment.storeLng]]);
 
     this.orders.forEach((order, i) => {
+      if (!order.lat || !order.lng) return;
+
       const color = STATUS_COLORS[order.status] || '#2196F3';
       const isActive = i === this.activeOrderIndex;
       const size = isActive ? 36 : 28;
@@ -142,11 +149,12 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
         `);
 
       this.markers.push(marker);
-      bounds.extend([order.lat, order.lng]);
+      bounds.extend([order.lat, order.lng] as L.LatLngTuple);
     });
 
     // Draw route line
     if (this.showRoute && this.orders.length > 0) {
+      this.routeSub?.unsubscribe();
       this.drawRoute();
     }
 
@@ -160,17 +168,18 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const coords = [
       [environment.storeLng, environment.storeLat],
-      ...this.orders.map(o => [o.lng, o.lat])
+      ...this.orders.filter(o => o.lat && o.lng).map(o => [o.lng, o.lat])
     ];
     const coordStr = coords.map(c => `${c[0]},${c[1]}`).join(';');
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`;
+    const osrmUrl = `${environment.domainUrl}/api/osrm/route?coords=${encodeURIComponent(coordStr)}`;
 
-    this.http.get<any>(osrmUrl).subscribe({
+    this.routeSub = this.http.get<any>(osrmUrl).pipe(timeout(8000)).subscribe({
       next: (res) => {
         if (res.routes?.[0]?.geometry?.coordinates) {
           const latlngs = res.routes[0].geometry.coordinates.map(
             (c: number[]) => [c[1], c[0]] as L.LatLngTuple
           );
+          this.polylineCoords = latlngs;
           this.routeLine = L.polyline(latlngs, {
             color: '#1976D2',
             weight: 4,
@@ -189,7 +198,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!this.map) return;
     const latlngs: L.LatLngTuple[] = [
       [environment.storeLat, environment.storeLng],
-      ...this.orders.map(o => [o.lat, o.lng] as L.LatLngTuple)
+      ...this.orders.filter(o => o.lat && o.lng).map(o => [o.lat, o.lng] as L.LatLngTuple)
     ];
     this.routeLine = L.polyline(latlngs, {
       color: '#1976D2',
@@ -201,7 +210,6 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Get route polyline coordinates for tracking docs */
   getRoutePolyline(): [number, number][] {
-    if (!this.routeLine) return [];
-    return this.routeLine.getLatLngs().map((ll: any) => [ll.lat, ll.lng]);
+    return this.polylineCoords;
   }
 }

@@ -15,6 +15,7 @@ export interface DeliveryOrder {
   status: DeliveryStatus;
   sequence: number;
   note: string;
+  totalPrice: number;
 }
 
 export interface DeliveryRoute {

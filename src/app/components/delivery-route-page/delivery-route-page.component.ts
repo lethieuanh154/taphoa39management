@@ -6,6 +6,7 @@ import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { OrderService } from '../../services/order.service';
 import { DeliveryRouteService } from '../../services/delivery-route.service';
 import { DeliveryTrackingService } from '../../services/delivery-tracking.service';
+import { EmployeeService, Employee } from '../../services/employee.service';
 import { DeliveryMapComponent } from './delivery-map.component';
 import { DeliveryOrder, DeliveryRoute, DeliveryStatus } from '../../models/delivery.model';
 
@@ -18,8 +19,6 @@ const STATUS_LABELS: Record<DeliveryStatus, string> = {
   delivered: 'Đã giao',
   failed: 'Thất bại'
 };
-
-const STATUS_FLOW: DeliveryStatus[] = ['pending', 'picking', 'picked', 'in_transit', 'arrived', 'delivered'];
 
 @Component({
   selector: 'app-delivery-route-page',
@@ -40,21 +39,30 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
   isLoading = false;
   activeOrderIndex = -1;
   isRouteActive = false;
+  driverSuggestions: Employee[] = [];
+  showDriverDropdown = false;
 
   readonly statusLabels = STATUS_LABELS;
   private destroy$ = new Subject<void>();
+  private watchId: number | null = null;
 
   constructor(
     private orderService: OrderService,
     private routeService: DeliveryRouteService,
     private trackingService: DeliveryTrackingService,
+    private employeeService: EmployeeService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     const today = new Date();
-    this.selectedDate = today.toISOString().split('T')[0];
+    const y = today.getFullYear();
+    const mo = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    this.selectedDate = `${y}-${mo}-${d}`;
     this.driverName = localStorage.getItem('delivery_driver_name') || '';
+    this.loadState();
+    this.employeeService.loadEmployeesWithSync();
 
     // Listen for real-time order updates
     this.orderService.orderCreated$.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -69,6 +77,7 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.trackingService.disconnectAll();
+    this.stopGpsTracking();
   }
 
   get totalDistance(): number {
@@ -95,23 +104,27 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
     try {
       const date = new Date(this.selectedDate);
       let rawOrders = await this.orderService.getOrdersByDeliveryDateFromDB(date);
+      console.log(`[Delivery] DB match "${this.selectedDate}":`, rawOrders.length, rawOrders.map(o => ({ id: o.id, desiredDeliveryDate: o.desiredDeliveryDate, wantDelivery: o.wantDelivery, lat: o.lat, lng: o.lng, status: o.status })));
 
       if (!rawOrders.length) {
         const apiOrders = await firstValueFrom(
           this.orderService.getOrdersByDeliveryDateFromAPI(this.selectedDate)
         );
+        console.log(`[Delivery] API fallback:`, apiOrders.length);
         for (const order of apiOrders) {
           await this.orderService.addOrderToDB(order);
         }
         rawOrders = apiOrders;
       }
 
-      this.orders = this.routeService.ordersToDeliveryOrders(
-        rawOrders.filter(o => o.wantDelivery && o.status !== 'canceled')
-      );
+      const filtered = rawOrders.filter(o => o.wantDelivery && o.status !== 'canceled');
+      console.log(`[Delivery] After wantDelivery filter:`, filtered.length, filtered.map(o => ({ id: o.id, totalPrice: o.totalPrice })));
+      this.orders = this.routeService.ordersToDeliveryOrders(filtered);
+      console.log(`[Delivery] Final orders:`, this.orders.length, this.orders.map(o => ({ id: o.orderId, totalPrice: o.totalPrice })));
       this.route = null;
       this.isRouteActive = false;
       this.activeOrderIndex = -1;
+      this.saveState();
     } catch (e) {
       console.error('Load orders error:', e);
     }
@@ -126,29 +139,67 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
 
   onDriverNameChange(): void {
     localStorage.setItem('delivery_driver_name', this.driverName);
+    this.showDriverDropdown = false;
   }
 
-  optimizeRoute(): void {
+  onDriverInput(): void {
+    const term = this.driverName.toLowerCase().trim();
+    const employees = this.employeeService.getActiveEmployees();
+    this.driverSuggestions = term
+      ? employees.filter(e => e.hoTen.toLowerCase().includes(term))
+      : employees;
+    this.showDriverDropdown = this.driverSuggestions.length > 0;
+    this.cdr.markForCheck();
+  }
+
+  onDriverFocus(): void {
+    this.driverSuggestions = this.employeeService.getActiveEmployees();
+    this.showDriverDropdown = this.driverSuggestions.length > 0;
+    this.cdr.markForCheck();
+  }
+
+  selectDriver(emp: Employee): void {
+    this.driverName = emp.hoTen;
+    this.showDriverDropdown = false;
+    localStorage.setItem('delivery_driver_name', this.driverName);
+    this.cdr.markForCheck();
+  }
+
+  hideDriverDropdown(): void {
+    setTimeout(() => {
+      this.showDriverDropdown = false;
+      this.cdr.markForCheck();
+    }, 200);
+  }
+
+  get totalOrdersPrice(): number {
+    return this.orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  }
+
+  async optimizeRoute(): Promise<void> {
     if (!this.orders.length) return;
-    this.orders = this.routeService.optimizeRoute(this.orders);
+    this.isLoading = true;
+    this.cdr.markForCheck();
+    this.orders = await this.routeService.optimizeRoute(this.orders);
     this.route = this.routeService.buildRoute(
       this.orders, this.selectedDate, this.driverName, this.startTime
     );
     this.orders = this.route.orders;
+    this.isLoading = false;
+    this.saveState();
     this.cdr.markForCheck();
   }
 
   onDrop(event: CdkDragDrop<DeliveryOrder[]>): void {
     if (this.isRouteActive) return;
     moveItemInArray(this.orders, event.previousIndex, event.currentIndex);
-    // Recalc sequences and distances
-    this.orders = this.routeService.optimizeRoute(
-      // Pass through with forced order (skip NN, just recalc distances)
+    this.orders = this.routeService.recalcOrder(
       this.orders.map((o, i) => ({ ...o, sequence: i + 1 }))
     );
     if (this.route) {
       this.route = { ...this.route, orders: this.orders, optimized: false };
     }
+    this.saveState();
     this.cdr.markForCheck();
   }
 
@@ -156,49 +207,58 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
     if (!this.orders.length || !this.driverName.trim()) return;
 
     if (!this.route) {
-      this.optimizeRoute();
+      await this.optimizeRoute();
     }
-    this.route = { ...this.route!, status: 'active' };
+    this.route = { ...this.route!, orders: this.orders, status: 'active' };
     this.isRouteActive = true;
     this.activeOrderIndex = 0;
 
-    // Publish tracking docs to Firestore
     const polyline = this.mapComponent?.getRoutePolyline() || [];
     await this.trackingService.publishRouteTracking(this.route, polyline);
+    this.startGpsTracking();
 
+    this.saveState();
     this.cdr.markForCheck();
   }
 
-  async advanceStatus(index: number): Promise<void> {
+  async markDelivered(index: number): Promise<void> {
     const order = this.orders[index];
-    const currentIdx = STATUS_FLOW.indexOf(order.status);
-    if (currentIdx < 0 || currentIdx >= STATUS_FLOW.length - 1) return;
-
-    const nextStatus = STATUS_FLOW[currentIdx + 1];
     this.orders = this.orders.map((o, i) =>
-      i === index ? { ...o, status: nextStatus } : o
+      i === index ? { ...o, status: 'delivered' as DeliveryStatus } : o
     );
-
-    // Update active index to first non-delivered order
     this.activeOrderIndex = this.orders.findIndex(o => o.status !== 'delivered');
-
-    // Update Firestore tracking
-    await this.trackingService.updateOrderStatus(order.orderId, nextStatus);
-
-    // Check if all delivered
+    await this.trackingService.updateOrderStatus(order.orderId, 'delivered');
+    firstValueFrom(this.orderService.updateOrderToFirestore(order.orderId, { status: 'checked' })).catch(() => {});
+    const raw = await this.orderService.getOrderFromDBById(order.orderId);
+    if (raw) await this.orderService.updateOrderInDB({ ...raw, status: 'checked' });
     if (this.allDelivered && this.route) {
       this.route = { ...this.route, status: 'completed' };
       this.isRouteActive = false;
+      this.stopGpsTracking();
     }
-
+    this.saveState();
     this.cdr.markForCheck();
   }
 
-  markFailed(index: number): void {
+  async markFailed(index: number): Promise<void> {
+    const orderId = this.orders[index].orderId;
     this.orders = this.orders.map((o, i) =>
       i === index ? { ...o, status: 'failed' as DeliveryStatus } : o
     );
-    this.trackingService.updateOrderStatus(this.orders[index].orderId, 'failed');
+    this.trackingService.updateOrderStatus(orderId, 'failed');
+    firstValueFrom(this.orderService.updateOrderToFirestore(orderId, { status: 'canceled' })).catch(() => {});
+    const raw = await this.orderService.getOrderFromDBById(orderId);
+    if (raw) await this.orderService.updateOrderInDB({ ...raw, status: 'canceled' });
+    this.saveState();
+    this.cdr.markForCheck();
+  }
+
+  removeOrder(index: number): void {
+    this.orders = this.orders
+      .filter((_, i) => i !== index)
+      .map((o, i) => ({ ...o, sequence: i + 1 }));
+    if (this.route) this.route = { ...this.route, orders: this.orders };
+    this.saveState();
     this.cdr.markForCheck();
   }
 
@@ -207,19 +267,69 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  getNextStatusLabel(status: DeliveryStatus): string {
-    const idx = STATUS_FLOW.indexOf(status);
-    if (idx < 0 || idx >= STATUS_FLOW.length - 1) return '';
-    return STATUS_LABELS[STATUS_FLOW[idx + 1]];
-  }
-
   async completeRoute(): Promise<void> {
     if (this.route) {
       await this.trackingService.clearTracking(this.route.id);
       this.route = { ...this.route, status: 'completed' };
       this.isRouteActive = false;
+      this.stopGpsTracking();
       this.cdr.markForCheck();
     }
+  }
+
+  private startGpsTracking(): void {
+    if (!navigator.geolocation || this.watchId !== null) return;
+    this.watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        if (this.activeOrderIndex < 0) return;
+        const activeOrder = this.orders[this.activeOrderIndex];
+        if (activeOrder && activeOrder.status !== 'delivered' && activeOrder.status !== 'failed') {
+          this.trackingService.updateOrderStatus(activeOrder.orderId, activeOrder.status, {
+            driverLat: coords.latitude, driverLng: coords.longitude
+          });
+        }
+      },
+      (err) => console.warn('[GPS]', err.message),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+  }
+
+  private stopGpsTracking(): void {
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+  }
+
+  private saveState(): void {
+    try {
+      localStorage.setItem('delivery_route_state', JSON.stringify({
+        selectedDate: this.selectedDate,
+        driverName: this.driverName,
+        startTime: this.startTime,
+        orders: this.orders,
+        route: this.route,
+        isRouteActive: this.isRouteActive,
+        activeOrderIndex: this.activeOrderIndex
+      }));
+    } catch {}
+  }
+
+  private loadState(): void {
+    try {
+      const raw = localStorage.getItem('delivery_route_state');
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (s.selectedDate) this.selectedDate = s.selectedDate;
+      if (s.driverName) this.driverName = s.driverName;
+      if (s.startTime) this.startTime = s.startTime;
+      if (s.orders?.length) {
+        this.orders = s.orders;
+        this.route = s.route ?? null;
+        this.isRouteActive = s.isRouteActive ?? false;
+        this.activeOrderIndex = s.activeOrderIndex ?? -1;
+      }
+    } catch {}
   }
 
   formatPrice(n: number): string {

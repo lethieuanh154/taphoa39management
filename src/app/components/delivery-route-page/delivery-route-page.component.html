@@ -7,10 +7,21 @@
         <label>Ngày giao</label>
         <input type="date" [(ngModel)]="selectedDate" (change)="onDateChange()" />
       </div>
-      <div class="control-group">
+      <div class="control-group driver-autocomplete">
         <label>Tài xế</label>
-        <input type="text" [(ngModel)]="driverName" (blur)="onDriverNameChange()"
-               placeholder="Tên người giao" />
+        <input type="text" [(ngModel)]="driverName"
+               (input)="onDriverInput()"
+               (focus)="onDriverFocus()"
+               (blur)="hideDriverDropdown()"
+               placeholder="Tên người giao"
+               autocomplete="off" />
+        <div class="driver-dropdown" *ngIf="showDriverDropdown">
+          <div class="driver-option" *ngFor="let emp of driverSuggestions"
+               (mousedown)="selectDriver(emp)">
+            <span class="driver-name">{{ emp.hoTen }}</span>
+            <span class="driver-phone" *ngIf="emp.soDienThoai">{{ emp.soDienThoai }}</span>
+          </div>
+        </div>
       </div>
       <div class="control-group">
         <label>Giờ xuất phát</label>
@@ -39,6 +50,10 @@
     <div class="stat" *ngIf="totalDuration">
       <span class="stat-value">{{ totalDuration }} phút</span>
       <span class="stat-label">dự kiến</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">{{ formatPrice(totalOrdersPrice) }}đ</span>
+      <span class="stat-label">tổng tiền</span>
     </div>
     <div class="stat" *ngIf="isRouteActive">
       <span class="stat-value">{{ deliveredCount }}/{{ orders.length }}</span>
@@ -77,6 +92,7 @@
               <strong>{{ order.customerName }}</strong>
               <span class="order-phone">{{ order.customerPhone }}</span>
             </div>
+            <div class="order-price">{{ formatPrice(order.totalPrice) }}đ</div>
             <div class="order-address">{{ order.address }}</div>
             <div class="order-meta">
               <span class="meta-tag">📏 {{ order.distanceFromPrev }}km</span>
@@ -90,14 +106,13 @@
               {{ statusLabels[order.status] }}
             </span>
 
+            <button class="btn btn-sm btn-remove" (click)="removeOrder(i); $event.stopPropagation()"
+                    *ngIf="!isRouteActive" title="Xóa khỏi danh sách">
+              🗑
+            </button>
             <ng-container *ngIf="isRouteActive && order.status !== 'delivered' && order.status !== 'failed'">
-              <button class="btn btn-sm btn-advance" (click)="advanceStatus(i); $event.stopPropagation()">
-                {{ getNextStatusLabel(order.status) }} →
-              </button>
-              <button class="btn btn-sm btn-fail" (click)="markFailed(i); $event.stopPropagation()"
-                      *ngIf="order.status !== 'pending'">
-                ✕
-              </button>
+              <button class="btn btn-sm btn-success" (click)="markDelivered(i); $event.stopPropagation()">✓ Thành công</button>
+              <button class="btn btn-sm btn-fail" (click)="markFailed(i); $event.stopPropagation()">✕ Thất bại</button>
             </ng-container>
           </div>
         </div>
