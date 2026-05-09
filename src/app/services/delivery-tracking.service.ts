@@ -24,20 +24,26 @@ export class DeliveryTrackingService implements OnDestroy {
   private initFirestore(): void {
     try {
       const config = (environment as any).firebaseChat;
+      console.log('[DeliveryTracking-Mgmt] config:', config ? `projectId=${config.projectId}` : 'MISSING');
       if (!config?.projectId) return;
 
       const appName = 'delivery-tracking';
       const existing = getApps().find(app => app.name === appName);
       this.firebaseApp = existing || initializeApp(config, appName);
       this.db = getFirestore(this.firebaseApp);
+      console.log('[DeliveryTracking-Mgmt] Firestore init OK, db:', !!this.db);
     } catch (e) {
-      console.error('[DeliveryTracking] Init error:', e);
+      console.error('[DeliveryTracking-Mgmt] Init error:', e);
     }
   }
 
   /** Publish tracking docs for all orders in a route (batch write) */
   async publishRouteTracking(route: DeliveryRoute, routePolyline: [number, number][]): Promise<void> {
-    if (!this.db) return;
+    console.log('[DeliveryTracking-Mgmt] publishRouteTracking called, db:', !!this.db, 'routeId:', route?.id, 'orders:', route?.orders?.length, 'polyline pts:', routePolyline?.length);
+    if (!this.db) {
+      console.error('[DeliveryTracking-Mgmt] ABORTED — db is null');
+      return;
+    }
     const batch = writeBatch(this.db);
     const colRef = collection(this.db, COLLECTION);
 
@@ -58,9 +64,15 @@ export class DeliveryTrackingService implements OnDestroy {
         customerLng: order.lng,
         updatedAt: new Date().toISOString()
       };
+      console.log('[DeliveryTracking-Mgmt] batch.set:', order.orderId, 'lat:', order.lat, 'lng:', order.lng, 'status:', order.status);
       batch.set(docRef, trackingDoc);
     }
-    await batch.commit();
+    try {
+      await batch.commit();
+      console.log('[DeliveryTracking-Mgmt] batch.commit OK — published', route.orders.length, 'docs');
+    } catch (e) {
+      console.error('[DeliveryTracking-Mgmt] batch.commit FAILED:', e);
+    }
   }
 
   /** Update single order status */
