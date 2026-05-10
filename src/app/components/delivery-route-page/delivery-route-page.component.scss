@@ -384,8 +384,14 @@
     grid-template-columns: 1fr;
   }
 
+  .delivery-page {
+    height: auto;
+    overflow-y: auto;
+  }
+
   .order-list-panel {
-    max-height: 45vh;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .map-panel {
@@ -398,6 +404,8 @@
   .delivery-page {
     padding: 8px;
     gap: 8px;
+    height: auto;
+    overflow-y: auto;
   }
 
   .delivery-header {
@@ -458,7 +466,7 @@
   }
 
   .order-list-panel {
-    max-height: 50vh;
+    max-height: none;
   }
 
   .map-panel {
