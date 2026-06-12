@@ -21,6 +21,7 @@ export class FirebaseService {
   get_all_customers = "/api/firebase/get/customers";
 
   get_revenue_by_daily = "/api/firebase/daily_summary";
+  get_revenue_by_date_range = "/api/firebase/date_range_summary";
   get_revenue_by_monthly = "/api/firebase/monthly_summary";
   get_revenue_by_yearly = "/api/firebase/yearly_summary";
   get_top_sell_products = "/api/firebase/top_products";

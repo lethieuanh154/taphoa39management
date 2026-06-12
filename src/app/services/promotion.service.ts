@@ -3,14 +3,31 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Promotion } from '../models/promotion.model';
+import { IndexedDBService } from './indexed-db.service';
+import { SALES_DB_NAME, SALES_DB_VERSION } from './sales-db.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PromotionService {
-  private baseUrl = `${environment.domainUrl}/api/firebase/promotions`;
+  private get baseUrl(): string {
+    return `${environment.domainUrl}/api/firebase/promotions`;
+  }
 
-  constructor(private http: HttpClient) {}
+  private dbName = SALES_DB_NAME;
+  private dbVersion = SALES_DB_VERSION;
+  private storeName = 'promotions';
+
+  constructor(
+    private http: HttpClient,
+    private indexedDBService: IndexedDBService
+  ) {}
+
+  private async ensureStore(): Promise<void> {
+    await this.indexedDBService.initSalesDB();
+  }
+
+  // ── API methods ──
 
   getAllPromotions(includeDisabled = true): Observable<Promotion[]> {
     return this.http.get<Promotion[]>(
@@ -44,5 +61,41 @@ export class PromotionService {
 
   togglePromotion(id: string, enabled: boolean): Observable<any> {
     return this.http.put(`${this.baseUrl}/${id}/toggle`, { isEnabled: enabled });
+  }
+
+  // ── IndexedDB cache methods ──
+
+  /** Lưu danh sách promotions vào IndexedDB cache */
+  async cachePromotions(promos: Promotion[]): Promise<void> {
+    try {
+      await this.ensureStore();
+      await this.indexedDBService.clear(this.dbName, this.dbVersion, this.storeName);
+      if (promos.length > 0) {
+        await this.indexedDBService.putMany<Promotion>(this.dbName, this.dbVersion, this.storeName, promos);
+      }
+    } catch (e) {
+      console.error('Failed to cache promotions to IndexedDB:', e);
+    }
+  }
+
+  /** Đọc promotions từ IndexedDB cache */
+  async getCachedPromotions(): Promise<Promotion[]> {
+    try {
+      await this.ensureStore();
+      return await this.indexedDBService.getAll<Promotion>(this.dbName, this.dbVersion, this.storeName);
+    } catch (e) {
+      console.error('Failed to read cached promotions:', e);
+      return [];
+    }
+  }
+
+  /** Clear cache */
+  async clearCache(): Promise<void> {
+    try {
+      await this.ensureStore();
+      await this.indexedDBService.clear(this.dbName, this.dbVersion, this.storeName);
+    } catch (e) {
+      console.error('Failed to clear promotions cache:', e);
+    }
   }
 }

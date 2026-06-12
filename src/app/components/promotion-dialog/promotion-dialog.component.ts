@@ -391,6 +391,11 @@ export class PromotionDialogComponent implements OnInit {
       // Sync campaign lên KiotViet — chỉ Type 1 (gift) và Type 3 (buy A get B)
       // Type 2 (direct discount) KHÔNG có API KiotViet tương ứng
       if (this.promoType !== 'directDiscount') {
+        // Khi edit: truyền kiotVietCampaignId để backend UPDATE thay vì CREATE mới
+        if (this.mode === 'edit' && this.data.promotion) {
+          promoData.kiotVietCampaignId = (this.data.promotion as any).kiotVietCampaignId || null;
+          promoData.kiotVietSalePromotionId = (this.data.promotion as any).kiotVietSalePromotionId || null;
+        }
         this.syncCampaignToKiotViet(promoData, savedPromoId);
       }
 

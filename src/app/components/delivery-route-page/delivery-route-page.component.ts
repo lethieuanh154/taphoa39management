@@ -253,6 +253,18 @@ export class DeliveryRoutePageComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  updateArrivalTime(index: number, newTime: string): void {
+    if (!newTime) return;
+    this.orders = this.orders.map((o, i) =>
+      i === index ? { ...o, estimatedArrival: newTime } : o
+    );
+    if (this.route) this.route = { ...this.route, orders: this.orders };
+    const order = this.orders[index];
+    this.trackingService.updateOrderStatus(order.orderId, order.status, { estimatedArrival: newTime });
+    this.saveState();
+    this.cdr.markForCheck();
+  }
+
   removeOrder(index: number): void {
     this.orders = this.orders
       .filter((_, i) => i !== index)

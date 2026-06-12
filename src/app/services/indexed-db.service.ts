@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { openDB, IDBPDatabase } from 'idb';
+import { openDB, deleteDB, IDBPDatabase } from 'idb';
+import { SALES_DB_NAME, SALES_DB_VERSION, salesDBUpgrade } from './sales-db.config';
 
 @Injectable({
   providedIn: 'root'
@@ -8,8 +9,45 @@ export class IndexedDBService {
   private dbs: Record<string, Promise<IDBPDatabase>> = {};
   private dbConnections: Record<string, IDBPDatabase | null> = {};
   private connectionStatus: Record<string, boolean> = {};
+  private salesDbReady: Promise<void> | null = null;
 
-  // No constructor needed
+  /**
+   * Initialize SalesDB with ALL required stores.
+   * Safe to call multiple times — only runs once.
+   */
+  initSalesDB(): Promise<void> {
+    if (this.salesDbReady) return this.salesDbReady;
+    this.salesDbReady = this._doInitSalesDB();
+    return this.salesDbReady;
+  }
+
+  private async _doInitSalesDB(): Promise<void> {
+    const requiredStores = ['products', 'categories', 'categoriesMeta', 'promotions', 'invoiceDrafts', 'invoiceProductMappings'];
+    try {
+      const existing = await openDB(SALES_DB_NAME).catch(() => null);
+      if (!existing) {
+        await this.getDB(SALES_DB_NAME, SALES_DB_VERSION, salesDBUpgrade);
+        return;
+      }
+
+      const currentStores = Array.from(existing.objectStoreNames);
+      const missingStores = requiredStores.filter(s => !currentStores.includes(s));
+      const currentVersion = existing.version;
+      existing.close();
+
+      if (missingStores.length > 0) {
+        console.log(`SalesDB v${currentVersion} missing stores: ${missingStores.join(', ')} → upgrading`);
+        await this.closeDB(SALES_DB_NAME);
+        const targetVersion = Math.max(currentVersion, SALES_DB_VERSION) + 1;
+        await this.getDB(SALES_DB_NAME, targetVersion, salesDBUpgrade);
+      } else {
+        await this.getDB(SALES_DB_NAME, currentVersion);
+      }
+    } catch (err) {
+      console.error('Failed to init SalesDB:', err);
+      await this.getDB(SALES_DB_NAME, SALES_DB_VERSION, salesDBUpgrade);
+    }
+  }
 
   async getDB(dbName: string, version: number, upgradeFn?: (db: IDBPDatabase) => void): Promise<IDBPDatabase> {
     // Return existing open connection if still valid
@@ -118,6 +156,13 @@ export class IndexedDBService {
     this.dbConnections[dbName] = null;
     this.connectionStatus[dbName] = false;
     delete this.dbs[dbName];
+  }
+
+  // Xóa database hoàn toàn
+  async deleteDatabase(dbName: string): Promise<void> {
+    await this.closeDB(dbName);
+    await deleteDB(dbName);
+    console.log(`Đã xóa database: ${dbName}`);
   }
 
   // Retry mechanism

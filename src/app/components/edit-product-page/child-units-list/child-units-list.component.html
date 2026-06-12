@@ -1,0 +1,103 @@
+<div class="child-units-wrapper">
+  <div class="child-units-header">
+    <mat-icon class="header-icon">link</mat-icon>
+    <span class="header-title">Đơn vị quy đổi ({{ childProducts.length }})</span>
+  </div>
+
+  <div class="child-units-grid">
+    <!-- Header Row -->
+    <div class="child-header-row">
+      <div class="col-unit">Đơn vị</div>
+      <div class="col-conversion">Quy đổi</div>
+      <div class="col-old-price">Giá bán cũ</div>
+      <div class="col-price">Giá bán đề xuất</div>
+      <div class="col-cost">Giá vốn</div>
+      <div class="col-onhand">Tồn kho</div>
+    </div>
+
+    <!-- Child Rows -->
+    <div class="child-row" *ngFor="let child of childProducts">
+      <!-- Unit Name -->
+      <div class="col-unit">
+        <div class="unit-badge">
+          <mat-icon class="unit-icon">inventory_2</mat-icon>
+          <span class="unit-name">{{ child.Unit }}</span>
+        </div>
+      </div>
+
+      <!-- Conversion -->
+      <div class="col-conversion">
+        <div class="conversion-text">
+          {{ getConversionText(child) }}
+        </div>
+      </div>
+
+      <!-- Old Base Price (Read-only) -->
+      <div class="col-old-price">
+        <span class="readonly-value old-price-value">{{ formatNumber(getOriginalBasePrice(child)) }}</span>
+      </div>
+
+      <!-- Base Price (Editable) -->
+      <div class="col-price">
+        <div class="value-with-diff">
+          <input
+            #basePriceInput
+            type="text"
+            class="child-input price-input"
+            [value]="formatNumber(child.BasePrice)"
+            (input)="onBasePriceChange(child, $event)"
+            (blur)="onBasePriceBlur($event)"
+            (keydown)="validateNumber($event)"
+            [matTooltip]="'Giá bán: ' + formatNumber(child.BasePrice)"
+          />
+          <span class="diff-indicator" *ngIf="child.Edited && !isUnchanged(getBasePriceDiff(child))"
+            [class.diff-increase]="isIncrease(getBasePriceDiff(child))"
+            [class.diff-decrease]="isDecrease(getBasePriceDiff(child))">
+            <mat-icon class="diff-arrow">{{ isIncrease(getBasePriceDiff(child)) ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            <span class="diff-value">{{ formatNumber(Math.abs(getBasePriceDiff(child))) }}</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Cost (Editable) -->
+      <div class="col-cost">
+        <div class="value-with-diff">
+          <input
+            readonly
+            #costInput
+            type="text"
+            class="child-input cost-input readonly-value "
+            [value]="formatNumber(child.Cost)"
+            (input)="onCostChange(child, $event)"
+            (blur)="onCostBlur($event)"
+            (keydown)="validateNumber($event)"
+            [matTooltip]="'Giá vốn: ' + formatNumber(child.Cost)"
+          />
+          <span class="diff-indicator" *ngIf="child.Edited && !isUnchanged(getCostDiff(child))"
+            [class.diff-increase]="isIncrease(getCostDiff(child))"
+            [class.diff-decrease]="isDecrease(getCostDiff(child))">
+            <mat-icon class="diff-arrow">{{ isIncrease(getCostDiff(child)) ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            <span class="diff-value">{{ formatNumber(Math.abs(getCostDiff(child))) }}</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- OnHand/OnHandNV (Read-only) -->
+      <div class="col-onhand">
+        <div class="value-with-diff">
+          <span class="readonly-value onhand-dual">
+            <span class="onhand-kv">{{ child.OnHand | number:'1.0-3' }}</span>
+            <span class="onhand-separator">/</span>
+            <span class="onhand-nv">{{ child.OnHandNV | number:'1.0-3' }}</span>
+          </span>
+          <span class="diff-indicator" *ngIf="child.Edited && !isUnchanged(getOnHandDiff(child))"
+            [class.diff-increase]="isIncrease(getOnHandDiff(child))"
+            [class.diff-decrease]="isDecrease(getOnHandDiff(child))">
+            <mat-icon class="diff-arrow">{{ isIncrease(getOnHandDiff(child)) ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            <span class="diff-value">{{ (Math.abs(getOnHandDiff(child)) | number:'1.0-3') }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

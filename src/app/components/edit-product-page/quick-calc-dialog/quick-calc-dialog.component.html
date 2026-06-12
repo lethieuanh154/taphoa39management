@@ -1,0 +1,117 @@
+<div class="quick-calc-dialog">
+  <div class="dialog-header">
+    <mat-icon class="header-icon">calculate</mat-icon>
+    <h2 class="dialog-title">Tính toán nhanh</h2>
+  </div>
+
+  <div class="dialog-content">
+    <div class="calc-hint">
+      <mat-icon>info</mat-icon>
+      <span>Hỗ trợ phép tính: +, -, *, /. Ví dụ: 100*4 = 400</span>
+    </div>
+
+    <div class="calc-grid">
+      <!-- Box -->
+      <div class="calc-row">
+        <label class="calc-label">
+          <mat-icon>inventory_2</mat-icon>
+          <span>Thùng</span>
+        </label>
+        <input
+          type="text"
+          class="calc-input"
+          [(ngModel)]="box"
+          (input)="onInputChange()"
+          (keydown.enter)="onEnter($event)"
+          placeholder="0 hoặc 5*2"
+          autofocus
+        />
+        <div class="calc-result">= {{ formatNumber(evaluateExpression(box)) }}</div>
+      </div>
+
+      <!-- Retail -->
+      <div class="calc-row">
+        <label class="calc-label">
+          <mat-icon>shopping_basket</mat-icon>
+          <span>Lẻ</span>
+        </label>
+        <input
+          type="text"
+          class="calc-input"
+          [(ngModel)]="retail"
+          (input)="onInputChange()"
+          (keydown.enter)="onEnter($event)"
+          placeholder="0"
+        />
+        <div class="calc-result">= {{ formatNumber(evaluateExpression(retail)) }}</div>
+      </div>
+
+      <!-- Discount per product -->
+      <div class="calc-row">
+        <label class="calc-label">
+          <mat-icon>local_offer</mat-icon>
+          <span>Chiết khấu / sản phẩm</span>
+        </label>
+        <input
+          type="text"
+          class="calc-input"
+          [(ngModel)]="discount"
+          (input)="onInputChange()"
+          (keydown.enter)="onEnter($event)"
+          placeholder="0"
+        />
+        <div class="calc-result">= {{ formatNumber(evaluateExpression(discount)) }}</div>
+      </div>
+
+      <!-- Discount on total -->
+      <div class="calc-row">
+        <label class="calc-label">
+          <mat-icon>discount</mat-icon>
+          <span>Chiết khấu / tổng tiền</span>
+        </label>
+        <input
+          type="text"
+          class="calc-input"
+          [(ngModel)]="discount2"
+          (input)="onInputChange()"
+          (keydown.enter)="onEnter($event)"
+          placeholder="0"
+        />
+        <div class="calc-result">= {{ formatNumber(evaluateExpression(discount2)) }}</div>
+      </div>
+
+      <!-- Total Price -->
+      <div class="calc-row highlight-row">
+        <label class="calc-label">
+          <mat-icon>payments</mat-icon>
+          <span>Thành tiền</span>
+        </label>
+        <input
+          type="text"
+          class="calc-input total-input"
+          [(ngModel)]="totalPrice"
+          (input)="onInputChange()"
+          (keydown.enter)="onEnter($event)"
+          placeholder="0 hoặc 1000*24"
+        />
+        <div class="calc-result total-result">= {{ formatNumber(calculatedTotal) }}</div>
+      </div>
+    </div>
+
+    <div class="calculation-summary">
+      <div class="summary-label">Tổng cộng:</div>
+      <div class="summary-value">{{ formatNumber(calculatedTotal) }} ₫</div>
+    </div>
+  </div>
+
+  <div class="dialog-actions">
+    <button mat-button (click)="cancel()" class="cancel-btn">
+      <mat-icon>close</mat-icon>
+      Hủy
+    </button>
+    <button mat-raised-button color="primary" (click)="save()" class="save-btn">
+      <mat-icon>check</mat-icon>
+      Lưu (Enter)
+    </button>
+  </div>
+</div>

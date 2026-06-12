@@ -35,5 +35,15 @@ export const environment = {
     messagingSenderId: "127064970883",
     appId: "1:127064970883:web:aff38421e01812a449adb6",
     measurementId: "G-R523DJVKR4"
+  },
+  // Firebase Products project (for realtime product sync)
+  firebaseProducts: {
+    apiKey: "AIzaSyBNOqptA-1BpBNmXWcRXRq1kP8V0Z02fJk",
+    authDomain: "products-6a635.firebaseapp.com",
+    projectId: "products-6a635",
+    storageBucket: "products-6a635.firebasestorage.app",
+    messagingSenderId: "968502699922",
+    appId: "1:968502699922:web:ff93eb49d2b7c73dac834b",
+    measurementId: "G-2CKY5V82D8"
   }
 };

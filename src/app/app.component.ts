@@ -2,10 +2,11 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './services/auth.service';
+import { ChatBubbleComponent } from './components/chat-bubble/chat-bubble.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, ChatBubbleComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

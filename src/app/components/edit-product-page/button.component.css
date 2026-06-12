@@ -1,0 +1,289 @@
+mat-toolbar button.mat-button {
+    font-size: 16px;
+    padding: 8px 16px;
+}
+
+/* Khi màn hình nhỏ hơn 1600px */
+@media (max-width: 1600px) {
+    mat-toolbar button.mat-button {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+}
+
+/* Khi màn hình rất nhỏ, ví dụ nhỏ hơn 1200px */
+@media (max-width: 1200px) {
+    mat-toolbar button.mat-button {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+}
+
+mat-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    /* Khoảng cách giữa các nút */
+}
+
+.promotion-button {
+    background: linear-gradient(135deg, #e2df3f, #b1ae05) !important;
+    color: white !important;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.promotion-button:hover {
+    background: linear-gradient(135deg, #e65100, #ff6d00) !important;
+    transform: scale(1.05);
+}
+
+.promotion-button:active {
+    background: linear-gradient(135deg, #bf360c, #e65100) !important;
+    transform: scale(0.9);
+    color: white;
+}
+
+.reload-button {
+    background: linear-gradient(135deg, #0288d1, #03a9f4) !important;
+    color: white !important;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.reload-button:hover {
+    background: linear-gradient(135deg, #01579b, #0288d1) !important;
+    transform: scale(1.05);
+}
+
+.reload-button:active {
+    background: linear-gradient(135deg, #004c8c, #01579b) !important;
+    transform: scale(0.9);
+}
+
+.reload-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+.clear-cache-button,
+.save-button,
+.update-button,
+.ton-kho-button,
+.send-data-to-kiotviet {
+    background-color: #00b63e;
+    color: white !important;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.save-button:hover,
+.ton-kho-button:hover,
+.update-button:hover,
+.send-data-to-kiotviet:hover,
+.clear-cache-button:hover,
+.add-product-button:hover,
+.invoice-ai-button:hover {
+    background-color: #c27707;
+    /* Màu xanh dương đậm hơn khi hover */
+    transform: scale(1.05);
+    /* Hiệu ứng phóng to nhẹ khi hover */
+}
+
+.save-button:active,
+.ton-kho-button:active,
+.update-button:active,
+.send-data-to-kiotviet:active,
+.clear-cache-button:active,
+.add-product-button:active,
+.invoice-ai-button:active {
+    background-color: #006d25;
+    /* Màu xanh lá đậm hơn khi nhấn */
+    transform: scale(0.9);
+    /* Hiệu ứng thu nhỏ nhẹ khi nhấn */
+    color: white;
+}
+
+.invoice-ai-button {
+    background: linear-gradient(135deg, #7c4dff, #536dfe) !important;
+    color: white !important;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.invoice-ai-button:hover {
+    background: linear-gradient(135deg, #651fff, #304ffe) !important;
+}
+
+.add-product-button {
+    /* Float the add button at the bottom-right corner of the viewport
+       so it stays near the screen edge regardless of container layout. */
+    position: fixed;
+    right: 16px;
+    padding: 10px 18px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.12);
+    background-color: #ec8a09;
+    color: white !important;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.add-original-button {
+    position: fixed;
+    right: 230px;
+    padding: 10px 18px;
+    background-color: #0d28c4;
+    color: white !important;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.add-original-button:hover {
+    background-color: #0d457a !important;
+    transform: scale(1.05);
+}
+
+.invoice-ai-button {
+    /* Float the add button at the bottom-right corner of the viewport
+       so it stays near the screen edge regardless of container layout. */
+    position: fixed;
+    right: 450px;
+}
+
+/* iPad / tablet - all toolbar + button overrides in ONE place */
+@media (max-width: 1100px) {
+    /* Remove fixed positioning from floating buttons */
+    .add-product-button {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+    }
+
+    .invoice-ai-button {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+    }
+
+    .add-original-button {
+        position: static !important;
+        right: auto !important;
+        top: auto !important;
+    }
+
+    /* Toolbar layout */
+    .toolbar {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        min-height: auto !important;
+        padding: 2px 0 !important;
+        background: transparent !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* All buttons: compact + 2-per-row + touch area = visual area */
+    .toolbar .update-button,
+    .toolbar .add-product-button,
+    .toolbar .add-original-button,
+    .toolbar .invoice-ai-button,
+    .toolbar .clear-cache-button,
+    .toolbar .promotion-button,
+    .toolbar .reload-button {
+        position: static !important;
+        right: auto !important;
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+        margin: 0 !important;
+        box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15) !important;
+        border-radius: 4px !important;
+        min-height: 28px !important;
+        height: 28px !important;
+        max-height: 28px !important;
+        line-height: 20px !important;
+        flex: 1 1 calc(50% - 6px) !important;
+        max-width: calc(50% - 3px) !important;
+        box-sizing: border-box !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        justify-content: center !important;
+        /* Kill Material's extra touch target */
+        --mdc-text-button-container-height: 28px !important;
+    }
+
+    /* Kill Material's hidden touch-target overlay that extends beyond button */
+    .toolbar .update-button .mat-mdc-button-touch-target,
+    .toolbar .add-product-button .mat-mdc-button-touch-target,
+    .toolbar .add-original-button .mat-mdc-button-touch-target,
+    .toolbar .invoice-ai-button .mat-mdc-button-touch-target,
+    .toolbar .clear-cache-button .mat-mdc-button-touch-target,
+    .toolbar .promotion-button .mat-mdc-button-touch-target,
+    .toolbar .reload-button .mat-mdc-button-touch-target {
+        height: 28px !important;
+        width: 100% !important;
+    }
+
+    /* Button icons */
+    .toolbar .update-button mat-icon,
+    .toolbar .add-product-button mat-icon,
+    .toolbar .add-original-button mat-icon,
+    .toolbar .invoice-ai-button mat-icon,
+    .toolbar .clear-cache-button mat-icon,
+    .toolbar .promotion-button mat-icon,
+    .toolbar .reload-button mat-icon {
+        font-size: 14px !important;
+        width: 14px !important;
+        height: 14px !important;
+        margin-right: 2px !important;
+    }
+
+    /* Disable hover scale on tablet */
+    .toolbar .update-button:hover,
+    .toolbar .add-product-button:hover,
+    .toolbar .add-original-button:hover,
+    .toolbar .invoice-ai-button:hover,
+    .toolbar .clear-cache-button:hover,
+    .toolbar .promotion-button:hover,
+    .toolbar .reload-button:hover {
+        transform: none !important;
+    }
+}

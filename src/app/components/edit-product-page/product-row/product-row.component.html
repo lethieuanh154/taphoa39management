@@ -1,0 +1,208 @@
+<div class="product-row-container" [style.background-color]="darkerColor">
+  <!-- Master Row -->
+  <div class="master-row" [class.expanded]="expanded" (click)="onRowClick($event)">
+    <!-- Expand/Collapse Button -->
+    <div class="expand-cell">
+      <button class="expand-btn" *ngIf="childProducts && childProducts.length > 0"
+        [matTooltip]="expanded ? 'Thu gọn' : 'Mở rộng'" type="button">
+        <mat-icon>{{ expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+      <span class="child-count" *ngIf="childProducts && childProducts.length > 0">
+        {{ childProducts.length }}
+      </span>
+    </div>
+
+    <!-- AverageCheckPoint Checkbox (hidden on iPad) -->
+    <div class="checkbox-cell ipad-hide">
+      <mat-checkbox [(ngModel)]="product.AverageCheckPoint" (change)="onAverageCheckPointChange()"
+        [matTooltip]="'Tính giá vốn trung bình'" color="primary">
+      </mat-checkbox>
+    </div>
+
+    <!-- Image -->
+    <div class="image-cell">
+      <div class="img-wrapper">
+        <img [src]="product.Image" [alt]="product.Name" class="product-img" />
+      </div>
+    </div>
+
+    <!-- Code (Editable, Sticky) -->
+    <div class="code-cell sticky-column">
+      <input type="text" class="cell-input" [(ngModel)]="product.Code" (input)="onCodeChange($event)"
+        [matTooltip]="product.Code" tabindex="1" />
+    </div>
+
+    <!-- Name (Editable, Sticky) -->
+    <div class="name-cell sticky-column">
+      <input type="text" class="cell-input name-input" [(ngModel)]="product.Name" (input)="onNameChange($event)"
+        [matTooltip]="product.Name" tabindex="1" />
+    </div>
+
+    <!-- BasePrice (Suggested Price - Editable) -->
+    <div class="price-cell">
+      <div class="value-with-diff">
+        <input type="text" class="cell-input numeric-input" #basePriceInput
+          [value]="formatNumber(product.BasePrice || 0)" (input)="onBasePriceChange($event)" (blur)="onBasePriceBlur()"
+          (keydown)="validateNumber($event)" placeholder="0" tabindex="1" />
+        <span class="diff-indicator" *ngIf="product.Edited && !isUnchanged(getBasePriceDiff())"
+          [class.diff-increase]="isIncrease(getBasePriceDiff())" [class.diff-decrease]="isDecrease(getBasePriceDiff())">
+          <mat-icon class="diff-arrow">{{ isIncrease(getBasePriceDiff()) ? 'arrow_upward' : 'arrow_downward'
+            }}</mat-icon>
+          <span class="diff-value">{{ formatNumber(Math.abs(getBasePriceDiff())) }}</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Cost (Read Only) -->
+    <div class="cost-cell">
+      <div class="value-with-diff">
+        <span class="readonly-value" #costDisplay>{{ formatNumber(product.Cost) }}</span>
+        <span class="diff-indicator" *ngIf="product.Edited && !isUnchanged(getCostDiff())"
+          [class.diff-increase]="isIncrease(getCostDiff())" [class.diff-decrease]="isDecrease(getCostDiff())">
+          <mat-icon class="diff-arrow">{{ isIncrease(getCostDiff()) ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+          <span class="diff-value">{{ formatNumber(Math.abs(getCostDiff())) }}</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- OnHand/OnHandNV (Inventory - Read Only) -->
+    <div class="onhand-cell">
+      <div class="value-with-diff">
+        <span class="readonly-value onhand-dual">
+          <span class="onhand-kv">{{ product.OnHand | number:'1.0-1' }}</span>
+          <span class="onhand-separator">/</span>
+          <span class="onhand-nv">{{ product.OnHandNV | number:'1.0-1' }}</span>
+        </span>
+        <span class="diff-indicator" *ngIf="product.Edited && !isUnchanged(getOnHandDiff())"
+          [class.diff-increase]="isIncrease(getOnHandDiff())" [class.diff-decrease]="isDecrease(getOnHandDiff())">
+          <mat-icon class="diff-arrow">{{ isIncrease(getOnHandDiff()) ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+          <span class="diff-value">{{ (Math.abs(getOnHandDiff()) | number:'1.0-1') }}</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Unit (Read Only, hidden on iPad) -->
+    <div class="unit-cell ipad-hide">
+      <span class="readonly-value">{{ product.Unit }}</span>
+    </div>
+
+    <!-- Box (Editable - originals only) -->
+    <div class="box-cell">
+      <input *ngIf="!product.isClone" type="text" class="cell-input numeric-input" [class.invoice-filled]="!!product.Edited && (product.Box || 0) > 0"
+        [value]="product.Retail? formatNumber(product.Box) : ''"
+        (input)="onBoxChange($event)" (blur)="onBoxBlur($event)" (keydown)="validateNumber($event)" placeholder="0"
+        tabindex="1" />
+      <span *ngIf="product.isClone" class="readonly-value clone-disabled">—</span>
+    </div>
+
+    <!-- Retail (Editable - originals only) -->
+    <div class="retail-cell">
+      <input *ngIf="!product.isClone" type="text" class="cell-input numeric-input" [class.invoice-filled]="!!product.Edited && (product.Retail || 0) > 0"
+        [value]="product.Retail? formatNumber(product.Retail) : ''"
+        (input)="onRetailChange($event)" (blur)="onRetailBlur($event)" (keydown)="validateNumber($event)"
+        placeholder="0" tabindex="1" />
+      <span *ngIf="product.isClone" class="readonly-value clone-disabled">—</span>
+    </div>
+
+    <!-- Discount per product (Editable, hidden on iPad - originals only) -->
+    <div class="discount-cell ipad-hide">
+      <input *ngIf="!product.isClone" type="text" class="cell-input numeric-input"
+        [value]="product.Discount ? formatNumber(product.Discount) : ''" (input)="onDiscountChange($event)"
+        (blur)="onDiscountBlur($event)" (keydown)="validateNumber($event)" placeholder="0" tabindex="1" />
+      <span *ngIf="product.isClone" class="readonly-value clone-disabled">—</span>
+    </div>
+
+    <!-- Discount on total (Editable, hidden on iPad - originals only) -->
+    <div class="discount2-cell ipad-hide">
+      <input *ngIf="!product.isClone" type="text" class="cell-input numeric-input"
+        [value]="product.Discount2 ? formatNumber(product.Discount2) : ''" (input)="onDiscount2Change($event)"
+        (blur)="onDiscount2Blur($event)" (keydown)="validateNumber($event)" placeholder="0" tabindex="1" />
+      <span *ngIf="product.isClone" class="readonly-value clone-disabled">—</span>
+    </div>
+
+    <!-- Total Price (Editable, Space = Popup - originals only) -->
+    <div class="totalprice-cell">
+      <input *ngIf="!product.isClone" type="text" class="cell-input numeric-input total-input" [class.invoice-filled]="!!product.Edited && (product.TotalPrice || 0) > 0"
+        [value]="product.TotalPrice ? formatNumber(product.TotalPrice) : ''" (input)="onTotalPriceChange($event)"
+        (blur)="onTotalPriceBlur($event)" (keydown)="onTotalPriceKeydown($event)" placeholder="0 (Space = Calc)"
+        matTooltip="Nhấn Space để mở popup tính toán" tabindex="1" />
+      <span *ngIf="product.isClone" class="readonly-value clone-disabled">—</span>
+    </div>
+
+    <!-- Action Column - Desktop (individual buttons) -->
+    <div class="action-cell action-desktop">
+      <button class="sync-btn" *ngIf="!product.isClone" (click)="onSyncClick($event)"
+        [disabled]="isSyncing"
+        [matTooltip]="isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ KiotViet'"
+        type="button">
+        <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
+      </button>
+      <button class="clone-btn" *ngIf="!product.isClone" (click)="onCloneClick($event)" matTooltip="Clone sản phẩm" type="button">
+        <mat-icon>content_copy</mat-icon>
+      </button>
+      <button class="save-clone-btn" *ngIf="product.isClone && pendingCloneSave && product.Edited"
+        (click)="onSaveCloneClick($event)" matTooltip="Lưu cập nhật Clone" type="button"
+        style="color: #4CAF50;">
+        <mat-icon>save</mat-icon>
+      </button>
+      <button class="edit-btn" *ngIf="product.isClone && !(pendingCloneSave && product.Edited)"
+        (click)="onEditClick($event)" matTooltip="Chỉnh sửa sản phẩm" type="button">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button class="history-btn" *ngIf="product.isClone" (click)="onHistoryClick($event)" matTooltip="Lịch sử thay đổi" type="button">
+        <mat-icon>history</mat-icon>
+      </button>
+      <button class="remove-btn" (click)="onRemoveFromListClick($event)" matTooltip="Bỏ khỏi danh sách" type="button">
+        <mat-icon>visibility_off</mat-icon>
+      </button>
+      <button class="delete-btn" (click)="onDeleteClick($event)" matTooltip="Xóa sản phẩm" type="button">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+
+    <!-- Action Column - iPad (dropdown menu) -->
+    <div class="action-cell action-ipad">
+      <button mat-icon-button [matMenuTriggerFor]="actionMenu" class="action-menu-btn" (click)="$event.stopPropagation()" type="button">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #actionMenu="matMenu">
+        <button mat-menu-item *ngIf="!product.isClone" (click)="onSyncClick($event)" [disabled]="isSyncing">
+          <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
+          <span>Đồng bộ KiotViet</span>
+        </button>
+        <button mat-menu-item *ngIf="!product.isClone" (click)="onCloneClick($event)">
+          <mat-icon>content_copy</mat-icon>
+          <span>Clone sản phẩm</span>
+        </button>
+        <button mat-menu-item *ngIf="product.isClone && pendingCloneSave && product.Edited" (click)="onSaveCloneClick($event)">
+          <mat-icon style="color: #4CAF50;">save</mat-icon>
+          <span style="color: #4CAF50;">Lưu Clone</span>
+        </button>
+        <button mat-menu-item *ngIf="product.isClone && !(pendingCloneSave && product.Edited)" (click)="onEditClick($event)">
+          <mat-icon>edit</mat-icon>
+          <span>Chỉnh sửa</span>
+        </button>
+        <button mat-menu-item *ngIf="product.isClone" (click)="onHistoryClick($event)">
+          <mat-icon>history</mat-icon>
+          <span>Lịch sử</span>
+        </button>
+        <button mat-menu-item (click)="onRemoveFromListClick($event)">
+          <mat-icon>visibility_off</mat-icon>
+          <span>Bỏ khỏi danh sách</span>
+        </button>
+        <button mat-menu-item (click)="onDeleteClick($event)" class="delete-menu-item">
+          <mat-icon color="warn">delete</mat-icon>
+          <span style="color: #f44336;">Xóa sản phẩm</span>
+        </button>
+      </mat-menu>
+    </div>
+  </div>
+
+  <!-- Children Units (Collapsed) -->
+  <div class="children-container" *ngIf="expanded && childProducts && childProducts.length > 0"
+    [style.background-color]="productColor">
+    <app-child-units-list [childProducts]="childProducts" [masterProduct]="product" [baseColor]="productColor"
+      (childEdit)="onChildEdit($event)">
+    </app-child-units-list>
+  </div>
+</div>

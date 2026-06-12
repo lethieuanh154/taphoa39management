@@ -82,10 +82,6 @@
         <td style="font-weight: bold; text-align: center;">{{ getTotalQuantity() | number:'1.0-0' }}</td>
         <td colspan="2" style="font-weight: bold; text-align: right;">{{ formatVnd(getItemsSubtotal()) }}</td>
       </tr>
-      <tr *ngIf="$any(data.order).shipCost > 0">
-        <td style="font-size: 12px;">Phí giao hàng:</td>
-        <td colspan="3" style="text-align: right; font-size: 12px;">{{ formatVnd($any(data.order).shipCost) }}</td>
-      </tr>
       <tr *ngIf="$any(data.order).pointsUsedForOrder > 0" style="color: #e65100;">
         <td style="font-size: 12px;">Trừ điểm thưởng (hàng):</td>
         <td colspan="3" style="text-align: right; font-size: 12px;">-{{ formatVnd($any(data.order).pointsUsedForOrder) }}</td>
@@ -94,7 +90,7 @@
         <td style="font-size: 12px;">Trừ điểm thưởng (ship):</td>
         <td colspan="3" style="text-align: right; font-size: 12px;">-{{ formatVnd($any(data.order).pointsUsedForShip) }}</td>
       </tr>
-      <tr *ngIf="$any(data.order).pointsUsedForOrder > 0 || $any(data.order).pointsUsedForShip > 0 || $any(data.order).shipCost > 0"
+      <tr *ngIf="$any(data.order).pointsUsedForOrder > 0 || $any(data.order).pointsUsedForShip > 0"
           style="border-top: 1px solid #ccc;">
         <td style="font-weight: bold;">Thanh toán:</td>
         <td colspan="3" style="font-weight: bold; text-align: right;">{{ formatVnd(getTotalPrice()) }}</td>

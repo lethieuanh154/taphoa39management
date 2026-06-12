@@ -1,0 +1,110 @@
+<h2 mat-dialog-title>
+  <mat-icon>local_offer</mat-icon>
+  QUẢN LÝ KHUYẾN MẠI
+</h2>
+
+<mat-dialog-content class="dialog-content">
+  <div class="toolbar-row">
+    <button mat-raised-button color="primary" (click)="onCreate()">
+      <mat-icon>add</mat-icon>
+      Thêm mới
+    </button>
+    <button mat-button (click)="loadPromotions()" matTooltip="Tải lại">
+      <mat-icon>refresh</mat-icon>
+    </button>
+    <button mat-button (click)="backfillKvCodes()" [disabled]="isBackfilling"
+            matTooltip="Đồng bộ mã KM từ KiotViet cho các campaign chưa có mã">
+      <mat-icon>sync</mat-icon>
+      {{ isBackfilling ? 'Đang đồng bộ...' : 'Đồng bộ mã chương trình KM' }}
+    </button>
+  </div>
+
+  <div class="filter-row">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Tìm kiếm</mat-label>
+      <input matInput [(ngModel)]="searchText" (ngModelChange)="applyFilter()" placeholder="Tên KM, mã SP, tên SP...">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-button-toggle-group [(ngModel)]="filterType" (ngModelChange)="applyFilter()" class="type-filter">
+      <mat-button-toggle value="all">Tất cả</mat-button-toggle>
+      <mat-button-toggle value="gift">Tặng kèm</mat-button-toggle>
+      <mat-button-toggle value="directDiscount">Giảm giá</mat-button-toggle>
+      <mat-button-toggle value="buyAGetB">Mua A giảm B</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  <div *ngIf="isLoading" class="loading">Đang tải...</div>
+
+  <div *ngIf="!isLoading && promotions.length === 0" class="empty">
+    Chưa có khuyến mại nào...
+  </div>
+
+  <div *ngIf="!isLoading && promotions.length > 0 && filteredPromotions.length === 0" class="empty">
+    Không tìm thấy khuyến mại phù hợp
+  </div>
+
+  <div class="promo-list" *ngIf="!isLoading && filteredPromotions.length > 0">
+    <div class="promo-card" *ngFor="let promo of filteredPromotions"
+         [class.disabled]="!promo.isEnabled"
+         [class.expired]="isExpired(promo)">
+
+      <div class="promo-header">
+        <span *ngFor="let badge of getTypeBadges(promo)"
+              class="type-badge" [ngClass]="badge.cssClass">
+          {{ badge.label }}
+        </span>
+        <span class="promo-name">{{ promo.name }} - {{ promo.kiotVietCampaignCode }}</span>
+        <mat-slide-toggle
+          [(ngModel)]="promo.isEnabled"
+          (change)="onToggle(promo)"
+          color="primary"
+          class="toggle">
+        </mat-slide-toggle>
+      </div>
+
+      <div class="promo-body">
+        <div class="promo-info">
+          <div class="info-row">
+            <span class="label">Sản phẩm áp dụng:</span>
+            <span>{{ promo.targetProductCode }} - {{ promo.targetProductName }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Điều kiện:</span>
+            <span>Mua >= {{ promo.minQuantity }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Nội dung:</span>
+            <span>{{ getPromoDetail(promo) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Thời gian:</span>
+            <span [class.text-red]="isExpired(promo)">
+              {{ formatDate(promo.fromDate) }} - {{ formatDate(promo.toDate) }}
+              <span *ngIf="isExpired(promo)">(Hết hạn)</span>
+            </span>
+          </div>
+          @if (promo.kiotVietCampaignCode) {
+          <div class="info-row">
+            <span class="label">Mã KiotViet:</span>
+            <span class="kv-code">{{ promo.kiotVietCampaignCode }}</span>
+          </div>
+          }
+        </div>
+
+        <div class="promo-actions">
+          <button mat-icon-button (click)="onEdit(promo)" matTooltip="Sửa">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button (click)="onDelete(promo)" matTooltip="Xóa" color="warn">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onClose()">Đóng</button>
+</mat-dialog-actions>

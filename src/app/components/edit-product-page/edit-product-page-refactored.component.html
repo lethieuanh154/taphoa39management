@@ -1,0 +1,108 @@
+<div class="search-header">
+    <!-- <button class="voice-icon" mat-icon-button matPrefix (click)="startVoiceInput()">🎤</button> -->
+    <div class="search-wrapper">
+    
+      <input type="text" class="search-bar" matInput [formControl]="searchControl"
+        placeholder="Tìm kiếm: nhập mã hàng hoặc tên hàng và gõ Enter..." (keyup.enter)="onSearch($event)" />
+      <i class="fa-solid fa-barcode barcode-scan-btn" (click)="startBarcodeScan()"
+        *ngIf="!isScanning" title="Quét mã vạch"></i>
+    </div>
+
+  <!-- Camera overlay for barcode scanning -->
+  <div class="barcode-overlay" *ngIf="isScanning" (click)="stopBarcodeScan()">
+    <div class="barcode-scanner-container" (click)="$event.stopPropagation()">
+      <video #barcodeVideo autoplay playsinline></video>
+      <div class="scan-line"></div>
+      <div class="scanner-label">Hướng camera vào mã vạch</div>
+      <button class="scanner-close-btn" (click)="stopBarcodeScan()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+  
+
+  <mat-toolbar class="toolbar">
+    <button mat-button class="update-button" (click)="onUpdate()">
+      <mat-icon>save</mat-icon>
+      Cập nhật
+    </button>
+    <button mat-button class="add-product-button" (click)="addProduct()" matTooltip="Thêm hàng hóa nội bộ (không sync KiotViet)">
+      <mat-icon>add_shopping_cart</mat-icon>
+      Thêm hàng clone
+    </button>
+    <button mat-button class="add-original-button" (click)="addOriginalProduct()" matTooltip="Tạo hàng hóa mới trực tiếp trên KiotViet">
+      <mat-icon>store</mat-icon>
+      Thêm hàng KiotViet
+    </button>
+    <button mat-button class="invoice-ai-button" (click)="openInvoiceProcessing()" matTooltip="Xử lý hóa đơn bằng AI">
+      <mat-icon>auto_awesome</mat-icon>
+      Hóa Đơn AI
+    </button>
+    <button mat-button class="clear-cache-button" (click)="clearAllCache()" matTooltip="Xóa toàn bộ dữ liệu tạm">
+      <mat-icon>delete_sweep</mat-icon>
+      Xóa cache
+    </button>
+    <button mat-button class="promotion-button" (click)="openPromotionList()" matTooltip="Quản lý khuyến mại">
+      <mat-icon>local_offer</mat-icon>
+      Khuyến mại
+    </button>
+    <button mat-button class="reload-button" (click)="fullReload()" [disabled]="isFullReloading"
+      matTooltip="Đồng bộ toàn bộ KiotViet + Firebase → IndexedDB">
+      <mat-icon [class.spinning]="isFullReloading">sync</mat-icon>
+      {{ isFullReloading ? 'Đang tải...' : 'Full Reload' }}
+    </button>
+  </mat-toolbar>
+
+  <div *ngIf="showOfflineHint" class="sync-hint">
+    <span class="sync-dot"></span>
+    <span>{{ hintMessage }}</span>
+  </div>
+</div>
+
+<div *ngIf="isLoading" class="loading-overlay">
+  <div class="spinner"></div>
+  <p>Đang tải dữ liệu...</p>
+</div>
+
+<!-- Main Product Table -->
+<div class="products-container">
+  <!-- Sticky Header -->
+  <div class="table-header">
+    <div class="header-cell expand-col"></div>
+    <div class="header-cell checkbox-col" title="Tính trung bình">TB</div>
+    <div class="header-cell image-col">Ảnh</div>
+    <div class="header-cell code-col">Mã hàng</div>
+    <div class="header-cell name-col">Tên hàng</div>
+    <div class="header-cell price-col" title="Giá bán đề xuất">Giá bán</div>
+    <div class="header-cell cost-col">Giá vốn</div>
+    <div class="header-cell onhand-col">Tồn kho</div>
+    <div class="header-cell unit-col">Đơn vị</div>
+    <div class="header-cell box-col">Thùng</div>
+    <div class="header-cell retail-col">Lẻ</div>
+    <div class="header-cell discount-col" title="Chiết khấu / sản phẩm">Chiết khấu/<br>Sản phẩm</div>
+    <div class="header-cell discount2-col" title="Chiết khấu / tổng tiền">Chiết khấu/<br>Tổng tiền</div>
+    <div class="header-cell totalprice-col">Thành tiền</div>
+    <div class="header-cell action-col">Thao tác</div>
+  </div>
+
+  <!-- Product Rows with Virtual Scrolling -->
+  <cdk-virtual-scroll-viewport class="products-viewport" [itemSize]="50" [minBufferPx]="500" [maxBufferPx]="1000">
+    <ng-container *cdkVirtualFor="let group of productGroups; trackBy: trackByGroup">
+      <app-product-row [product]="group.master" [childProducts]="group.children"
+        [productColor]="getProductColor(group.master.Id)"
+        [pendingCloneSave]="pendingCloneSave"
+        (productChange)="onProductChange($event, productGroups.indexOf(group))"
+        (childrenChange)="onChildrenChange($event, productGroups.indexOf(group))"
+        (deleteProduct)="onDeleteProduct($event, productGroups.indexOf(group))"
+        (removeFromList)="onRemoveFromList(productGroups.indexOf(group))"
+        (saveCloneClick)="saveCloneProducts()"></app-product-row>
+    </ng-container>
+  </cdk-virtual-scroll-viewport>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && productGroups.length === 0">
+    <mat-icon class="empty-icon">search_off</mat-icon>
+    <h3>Không tìm thấy sản phẩm</h3>
+    <p>Vui lòng nhập mã hàng hoặc tên hàng để tìm kiếm</p>
+  </div>
+</div>

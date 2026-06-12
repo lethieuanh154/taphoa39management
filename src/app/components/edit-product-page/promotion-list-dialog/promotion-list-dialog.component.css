@@ -1,0 +1,165 @@
+::ng-deep .cdk-overlay-pane:has(promotion-list-dialog) {
+  max-width: 95vw !important;
+}
+
+::ng-deep .cdk-overlay-pane:has(promotion-list-dialog) .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 16px !important;
+}
+
+.dialog-content {
+  min-width: 700px;
+  max-width: 900px;
+  max-height: 75vh;
+  padding: 0;
+}
+
+h2[mat-dialog-title] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.toolbar-row {
+  display: flex;
+  gap: 8px;
+  padding: 8px 2px;
+  align-items: center;
+}
+
+.filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 2px 0;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.type-filter {
+  flex-shrink: 0;
+}
+
+.type-filter .mat-button-toggle-label-content {
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.loading, .empty {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+  font-size: 14px;
+}
+
+.promo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.promo-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.promo-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.promo-card.disabled {
+  opacity: 0.5;
+}
+
+.promo-card.expired {
+  border-color: #ffcdd2;
+  background: #fff5f5;
+}
+
+.promo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.promo-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.toggle {
+  flex-shrink: 0;
+}
+
+.type-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.type-gift {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.type-percent {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.type-fixed {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.promo-body {
+  display: flex;
+  gap: 12px;
+}
+
+.promo-info {
+  flex: 1;
+}
+
+.info-row {
+  font-size: 13px;
+  padding: 3px 0;
+  color: #444;
+}
+
+.info-row .label {
+  color: #888;
+  margin-right: 4px;
+}
+
+.promo-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.text-red {
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+mat-dialog-actions {
+  padding: 12px 0 4px;
+}

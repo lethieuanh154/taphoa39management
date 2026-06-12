@@ -96,7 +96,13 @@
             <div class="order-address">{{ order.address }}</div>
             <div class="order-meta">
               <span class="meta-tag">📏 {{ order.distanceFromPrev }}km</span>
-              <span class="meta-tag" *ngIf="order.estimatedArrival">⏰ {{ order.estimatedArrival }}</span>
+              <span class="meta-tag" *ngIf="order.estimatedArrival && !isRouteActive">⏰ {{ order.estimatedArrival }}</span>
+              <span class="meta-tag arrival-edit" *ngIf="order.estimatedArrival && isRouteActive && order.status !== 'delivered' && order.status !== 'failed'">
+                ⏰ <input type="time" [value]="order.estimatedArrival"
+                          (change)="updateArrivalTime(i, $any($event.target).value)"
+                          (click)="$event.stopPropagation()" class="arrival-input" />
+              </span>
+              <span class="meta-tag" *ngIf="order.estimatedArrival && isRouteActive && (order.status === 'delivered' || order.status === 'failed')">⏰ {{ order.estimatedArrival }}</span>
               <span class="meta-tag" *ngIf="order.note">📝 {{ order.note }}</span>
             </div>
           </div>

@@ -319,6 +319,23 @@
         background: #FFF3E0;
         font-weight: 600;
       }
+
+      &.arrival-edit {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .arrival-input {
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        font-size: 14px;
+        padding: 6px 8px;
+        min-width: 90px;
+        min-height: 36px;
+        background: #fff;
+        cursor: pointer;
+      }
     }
   }
 }

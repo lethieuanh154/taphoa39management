@@ -2,6 +2,7 @@ export interface Product {
   Id: number;
   Code: string;
   Name: string;
+  NameOriginal?: string;  // Original name from KiotViet without variant/unit suffix (e.g., "Test")
   FullName: string;
   CategoryId: number | null;  // ✅ Cho phép null
   isActive: boolean;

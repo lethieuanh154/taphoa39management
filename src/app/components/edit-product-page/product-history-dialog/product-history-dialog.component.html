@@ -1,0 +1,99 @@
+<div class="history-dialog">
+  <!-- Header -->
+  <div class="dialog-header">
+    <div class="header-info">
+      <mat-icon class="header-icon">history</mat-icon>
+      <div class="header-text">
+        <h2>Lịch sử Thay đổi</h2>
+        <span class="product-info">{{ data.productCode }} - {{ data.productName }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="loadRecords()" [disabled]="isLoading" matTooltip="Làm mới">
+        <mat-icon [class.spinning]="isLoading">refresh</mat-icon>
+      </button>
+      <button class="close-btn" (click)="close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="dialog-content">
+    <!-- Loading -->
+    <div class="loading-state" *ngIf="isLoading">
+      <mat-icon class="spinning">sync</mat-icon>
+      <p>Đang tải lịch sử...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!isLoading && records.length === 0">
+      <mat-icon class="empty-icon">history_toggle_off</mat-icon>
+      <p>Chưa có lịch sử thay đổi</p>
+      <span>Các thay đổi về Mã Hàng, Tên Hàng, Giá Bán, Giá Vốn, Tồn Kho sẽ được ghi lại tại đây</span>
+    </div>
+
+    <!-- Records List -->
+    <div class="records-list" *ngIf="!isLoading && records.length > 0">
+      <div class="date-group" *ngFor="let group of groupedRecords">
+        <div class="date-header">
+          <mat-icon>calendar_today</mat-icon>
+          <span>{{ group.date }}</span>
+        </div>
+
+        <div class="record-item" *ngFor="let record of group.records">
+          <div class="record-time">
+            <mat-icon class="time-icon">schedule</mat-icon>
+            <span>{{ formatTime(record.timestamp) }}</span>
+          </div>
+
+          <div class="record-content" [ngClass]="getFieldClass(record.field)">
+            <div class="field-info">
+              <mat-icon class="field-icon">{{ getFieldIcon(record.field) }}</mat-icon>
+              <span class="field-label">{{ record.fieldLabel }}</span>
+            </div>
+
+            <div class="value-change">
+              <span class="old-value">{{ formatValue(record.oldValue, record.field) }}</span>
+              <mat-icon class="arrow-icon"
+                [class.increase]="isIncrease(record)"
+                [class.decrease]="isDecrease(record)">
+                arrow_forward
+              </mat-icon>
+              <span class="new-value"
+                [class.increase]="isIncrease(record)"
+                [class.decrease]="isDecrease(record)">
+                {{ formatValue(record.newValue, record.field) }}
+              </span>
+            </div>
+          </div>
+
+          <span class="record-tag" *ngIf="record.tag" [ngClass]="'tag-' + record.tag">
+            {{ getTagLabel(record.tag) }}
+          </span>
+
+          <div class="record-user" *ngIf="record.changedBy">
+            <mat-icon>person</mat-icon>
+            <span>{{ record.changedBy }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="dialog-footer">
+    <div class="stats">
+      <span *ngIf="records.length > 0">{{ records.length }} thay đổi</span>
+    </div>
+    <div class="actions">
+      <button class="clear-btn" *ngIf="records.length > 0" (click)="clearHistory()" matTooltip="Xóa toàn bộ lịch sử">
+        <mat-icon>delete_sweep</mat-icon>
+        Xóa lịch sử
+      </button>
+      <button class="close-action-btn" (click)="close()">
+        Đóng
+      </button>
+    </div>
+  </div>
+</div>

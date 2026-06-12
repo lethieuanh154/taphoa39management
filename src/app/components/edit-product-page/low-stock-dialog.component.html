@@ -1,0 +1,30 @@
+<h2 mat-dialog-title class="dialog-title">Danh sách sản phẩm hết hàng tồn kho</h2>
+    <mat-dialog-content>
+      <table mat-table [dataSource]="filteredProducts" class="mat-elevation-z8">
+        <!-- Cột Mã Hàng -->
+        <ng-container matColumnDef="Code">
+          <th mat-header-cell *matHeaderCellDef>Mã Hàng</th>
+          <td mat-cell *matCellDef="let element">{{ element.Code }}</td>
+        </ng-container>
+
+        <!-- Cột Tên Hàng -->
+        <ng-container matColumnDef="FullName">
+          <th mat-header-cell *matHeaderCellDef>Tên Hàng</th>
+          <td mat-cell *matCellDef="let element">{{ element.FullName }}</td>
+        </ng-container>
+
+        <!-- Cột Tồn Kho -->
+        <ng-container matColumnDef="OnHand">
+          <th mat-header-cell *matHeaderCellDef>Tồn Kho</th>
+          <td mat-cell *matCellDef="let element">{{ element.OnHand }}</td>
+        </ng-container>
+
+        <!-- Hàng tiêu đề -->
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <!-- Hàng dữ liệu -->
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button (click)="onNoClick()">Đóng</button>
+    </mat-dialog-actions>

@@ -79,7 +79,7 @@ export class DeliveryTrackingService implements OnDestroy {
   async updateOrderStatus(
     orderId: string,
     status: DeliveryStatus,
-    extras?: { driverLat?: number; driverLng?: number }
+    extras?: { driverLat?: number; driverLng?: number; estimatedArrival?: string }
   ): Promise<void> {
     if (!this.db) return;
     const docRef = doc(this.db, COLLECTION, orderId);
@@ -89,6 +89,7 @@ export class DeliveryTrackingService implements OnDestroy {
     };
     if (extras?.driverLat != null) updates.driverLat = extras.driverLat;
     if (extras?.driverLng != null) updates.driverLng = extras.driverLng;
+    if (extras?.estimatedArrival != null) updates.estimatedArrival = extras.estimatedArrival;
     await setDoc(docRef, updates, { merge: true });
   }
 

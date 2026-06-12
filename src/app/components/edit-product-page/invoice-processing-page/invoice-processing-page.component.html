@@ -1,0 +1,441 @@
+<div class="invoice-processing-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <i class="fa-solid fa-file-invoice"></i>
+      <span class="page-title">Xử Lý Hóa Đơn</span>
+    </div>
+  </div>
+
+  <!-- Source Tabs -->
+  <div class="source-tabs">
+    <button class="tab-btn" [class.active]="activeTab === 'email'" (click)="switchTab('email')">
+      <i class="fa-solid fa-envelope"></i> Email Hóa Đơn
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'upload'" (click)="switchTab('upload')">
+      <i class="fa-solid fa-file-code"></i> Upload XML
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'pdf'" (click)="switchTab('pdf')">
+      <i class="fa-solid fa-file-pdf"></i> Upload PDF/Ảnh
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'clone_image'" (click)="switchTab('clone_image')">
+      <i class="fa-solid fa-clone"></i> Upload Clone
+    </button>
+  </div>
+
+  <!-- Top Section: Upload/Email + Info -->
+  <div class="top-section">
+
+    <!-- Upload Tab -->
+    <div class="upload-section" *ngIf="activeTab === 'upload'">
+      <div class="dropzone" [class.drag-over]="isDragOver" [class.has-file]="selectedFile"
+        (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+        <div class="dropzone-content" *ngIf="!selectedFile">
+          <i class="fa-solid fa-file-code dropzone-icon"></i>
+          <label class="file-select-btn">
+            <input type="file" accept=".xml" (change)="onFileSelected($event)" hidden>
+            <span>Chọn XML</span>
+          </label>
+        </div>
+        <div class="file-info" *ngIf="selectedFile">
+          <i class="fa-solid fa-file-code file-icon"></i>
+          <span class="file-name">{{ selectedFile.name }}</span>
+          <button class="remove-file-btn" (click)="clearAll()">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <div class="action-row">
+        <button mat-raised-button color="primary" [disabled]="!selectedFile || isProcessing" (click)="processFile()"
+          class="process-btn">
+          <mat-spinner *ngIf="isProcessing" diameter="16"></mat-spinner>
+          <i class="fa-solid fa-file-invoice" *ngIf="!isProcessing"></i>
+          <span>{{ isProcessing ? 'Đang đọc...' : 'Đọc XML' }}</span>
+        </button>
+        <button mat-raised-button color="accent" (click)="openRecentInvoices()" class="recent-btn"
+          matTooltip="Xem danh sách hóa đơn đã xử lý trong 24h qua">
+          <mat-icon>history</mat-icon>
+          24h qua
+        </button>
+      </div>
+    </div>
+
+    <!-- PDF Tab -->
+    <div class="upload-section" *ngIf="activeTab === 'pdf'">
+      <div class="dropzone" [class.drag-over]="isPdfDragOver" [class.has-file]="selectedPdfFile"
+        (dragover)="onPdfDragOver($event)" (dragleave)="onPdfDragLeave($event)" (drop)="onPdfDrop($event)">
+        <div class="dropzone-content" *ngIf="!selectedPdfFile">
+          <i class="fa-solid fa-cloud-arrow-up dropzone-icon"></i>
+          <label class="file-select-btn">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onPdfFileSelected($event)" hidden>
+            <span>Chọn PDF/Ảnh</span>
+          </label>
+        </div>
+        <div class="file-info" *ngIf="selectedPdfFile">
+          <i class="fa-solid fa-file-pdf file-icon"></i>
+          <span class="file-name">{{ selectedPdfFile.name }}</span>
+          <button class="remove-file-btn" (click)="clearPdf()">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Stepper -->
+      <div class="stepper-section" *ngIf="processingSteps.length > 0 && isProcessing">
+        <div class="stepper-container">
+          <div *ngFor="let step of processingSteps; let last = last" class="step-item" [ngClass]="getStepClass(step)">
+            <div class="step-icon">
+              <mat-icon>{{ getStepIcon(step) }}</mat-icon>
+            </div>
+            <span class="step-label">{{ step.label }}</span>
+            <div class="step-connector" *ngIf="!last"></div>
+          </div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button mat-raised-button color="primary" [disabled]="!selectedPdfFile || isProcessing"
+          (click)="processPdfFile()" class="process-btn">
+          <mat-spinner *ngIf="isProcessing" diameter="16"></mat-spinner>
+          <i class="fa-solid fa-wand-magic-sparkles" *ngIf="!isProcessing"></i>
+          <span>{{ isProcessing ? 'Xử lý...' : 'Xử Lý AI' }}</span>
+        </button>
+        <button mat-raised-button color="accent" (click)="openRecentInvoices()" class="recent-btn"
+          matTooltip="Xem danh sách hóa đơn đã xử lý trong 24h qua">
+          <mat-icon>history</mat-icon>
+          24h qua
+        </button>
+      </div>
+    </div>
+
+    <!-- Email Tab -->
+    <div class="email-section" *ngIf="activeTab === 'email'">
+      <div class="email-controls">
+        <mat-form-field appearance="outline" class="label-select">
+          <mat-label>{{ isLoadingLabels ? 'Đang tải labels...' : 'Chọn Label' }}</mat-label>
+          <mat-select [(value)]="selectedLabelId" (selectionChange)="loadEmails()" [disabled]="isLoadingLabels"
+            (openedChange)="$event && onLabelDropdownOpened()" panelClass="label-dropdown-panel">
+            <div class="select-search-box">
+              <mat-icon>search</mat-icon>
+              <input type="text" [(ngModel)]="labelSearchText" (ngModelChange)="filterLabels()"
+                placeholder="Tìm label..." (keydown)="$event.stopPropagation()" (click)="$event.stopPropagation()" />
+            </div>
+            <mat-option *ngIf="isLoadingLabels" disabled>
+              <mat-spinner diameter="16"
+                style="display:inline-block;vertical-align:middle;margin-right:8px"></mat-spinner>
+              Đang tải...
+            </mat-option>
+            <mat-option *ngFor="let label of filteredLabels" [value]="label.id">{{ label.name }}</mat-option>
+            <div *ngIf="!isLoadingLabels && filteredLabels.length === 0" class="no-results">Không tìm thấy</div>
+          </mat-select>
+        </mat-form-field>
+        <button mat-stroked-button (click)="connectGmail()" class="connect-gmail-btn"
+          matTooltip="Kết nối/làm mới quyền truy cập Gmail">
+          <mat-icon>link</mat-icon>
+          {{ gmailConnected ? 'Làm mới Gmail' : 'Kết nối Gmail' }}
+        </button>
+      </div>
+
+      <div class="email-list" *ngIf="!isLoadingEmails && gmailEmails.length > 0">
+        <div *ngFor="let email of gmailEmails" class="email-item" (click)="selectEmail(email)"
+          [class.processing]="isProcessing">
+          <div class="email-item-left">
+            <span class="email-subject">{{ email.subject }}</span>
+            <span class="email-from">{{ email.from_address }}</span>
+          </div>
+          <div class="email-item-right">
+            <span class="attachment-badge" [ngClass]="getAttachmentBadgeClass(email)">
+              {{ getAttachmentBadge(email) }}
+            </span>
+            <span class="email-date">{{ email.date | date:'dd/MM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="email-loading" *ngIf="isLoadingEmails">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span>Đang tải email...</span>
+      </div>
+
+      <div class="email-empty" *ngIf="!isLoadingEmails && selectedLabelId && gmailEmails.length === 0">
+        <i class="fa-solid fa-inbox"></i>
+        <span>Không có email hóa đơn trong 7 ngày qua</span>
+      </div>
+
+      <!-- Manual XML import for emails with only links -->
+      <div class="manual-xml-import" *ngIf="showManualXmlImport">
+        <p>Email không có file đính kèm. Vui lòng tải XML từ link và import:</p>
+        <label class="file-select-btn">
+          <input type="file" accept=".xml" (change)="onXmlFileSelected($event)" hidden>
+          <i class="fa-solid fa-file-code"></i> Import XML
+        </label>
+      </div>
+    </div>
+
+    <!-- Clone Image Tab -->
+    <div class="upload-section" *ngIf="activeTab === 'clone_image'">
+      <div class="dropzone" [class.drag-over]="isCloneDragOver" [class.has-file]="selectedCloneImageFile"
+        (dragover)="onCloneDragOver($event)" (dragleave)="onCloneDragLeave($event)" (drop)="onCloneDrop($event)">
+        <div class="dropzone-content" *ngIf="!selectedCloneImageFile">
+          <i class="fa-solid fa-image dropzone-icon"></i>
+          <label class="file-select-btn">
+            <input type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onCloneFileSelected($event)" hidden>
+            <span>Chọn Ảnh Clone</span>
+          </label>
+          <p class="dropzone-hint">Ảnh phiếu giao hàng/bảng giá (bỏ qua chữ viết tay)</p>
+        </div>
+        <div class="file-info" *ngIf="selectedCloneImageFile">
+          <i class="fa-solid fa-image file-icon"></i>
+          <span class="file-name">{{ selectedCloneImageFile.name }}</span>
+          <button class="remove-file-btn" (click)="clearCloneImage()">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Stepper -->
+      <div class="stepper-section" *ngIf="processingSteps.length > 0 && isProcessing">
+        <div class="stepper-container">
+          <div *ngFor="let step of processingSteps; let last = last" class="step-item" [ngClass]="getStepClass(step)">
+            <div class="step-icon">
+              <mat-icon>{{ getStepIcon(step) }}</mat-icon>
+            </div>
+            <span class="step-label">{{ step.label }}</span>
+            <div class="step-connector" *ngIf="!last"></div>
+          </div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button mat-raised-button color="primary" [disabled]="!selectedCloneImageFile || isProcessing"
+          (click)="processCloneImage()" class="process-btn">
+          <mat-spinner *ngIf="isProcessing" diameter="16"></mat-spinner>
+          <i class="fa-solid fa-wand-magic-sparkles" *ngIf="!isProcessing"></i>
+          <span>{{ isProcessing ? 'Đang đọc...' : 'Đọc Ảnh Clone' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Invoice Info (when available) -->
+    <div class="info-section" *ngIf="processingResult?.invoice">
+      <!-- Row 1: Invoice metadata -->
+      <div class="info-row metadata-row">
+        <div class="info-item" [matTooltip]="'Số hóa đơn: ' + invoiceForm.get('invoice_metadata.invoice_no')?.value">
+          <span class="info-label">Số HĐ:</span>
+          <span class="info-value">{{ invoiceForm.get('invoice_metadata.invoice_no')?.value }}</span>
+        </div>
+        <div class="info-item" [matTooltip]="'Ký hiệu: ' + invoiceForm.get('invoice_metadata.invoice_serial')?.value">
+          <span class="info-label">Ký hiệu:</span>
+          <span class="info-value">{{ invoiceForm.get('invoice_metadata.invoice_serial')?.value }}</span>
+        </div>
+        <div class="info-item"
+          [matTooltip]="'Ngày hóa đơn: ' + invoiceForm.get('invoice_metadata.invoice_date')?.value">
+          <span class="info-label">Ngày:</span>
+          <span class="info-value">{{ invoiceForm.get('invoice_metadata.invoice_date')?.value }}</span>
+        </div>
+        <div class="info-item"
+          [matTooltip]="'Mã CQT: ' + invoiceForm.get('invoice_metadata.tax_authority_code')?.value">
+          <span class="info-label">Mã CQT:</span>
+          <span class="info-value">{{ invoiceForm.get('invoice_metadata.tax_authority_code')?.value }}</span>
+        </div>
+      </div>
+      <!-- Row 2: Seller info -->
+      <div class="info-row party-row">
+        <div class="info-item"
+          [matTooltip]="invoiceForm.get('seller.company_name')?.value + ' - MST: ' + invoiceForm.get('seller.tax_code')?.value">
+          <span class="info-label">Bên bán:</span>
+          <span class="info-value">{{ invoiceForm.get('seller.company_name')?.value }}</span>
+          <span class="info-mst">({{ invoiceForm.get('seller.tax_code')?.value }})</span>
+        </div>
+        <div class="info-item" [matTooltip]="'Địa chỉ: ' + invoiceForm.get('seller.address')?.value">
+          <span class="info-label">ĐC:</span>
+          <span class="info-value">{{ invoiceForm.get('seller.address')?.value }}</span>
+        </div>
+      </div>
+      <!-- Row 3: Buyer info -->
+      <div class="info-row party-row">
+        <div class="info-item"
+          [matTooltip]="invoiceForm.get('buyer.company_name')?.value + ' - MST: ' + invoiceForm.get('buyer.tax_code')?.value">
+          <span class="info-label">Bên mua:</span>
+          <span class="info-value">{{ invoiceForm.get('buyer.company_name')?.value }}</span>
+          <span class="info-mst">({{ invoiceForm.get('buyer.tax_code')?.value }})</span>
+        </div>
+        <div class="info-item" [matTooltip]="'Địa chỉ: ' + invoiceForm.get('buyer.address')?.value">
+          <span class="info-label">ĐC:</span>
+          <span class="info-value">{{ invoiceForm.get('buyer.address')?.value }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Validation Errors -->
+  <div class="validation-errors" *ngIf="validationErrors.length > 0">
+    <div *ngFor="let error of validationErrors" class="error-item" [class.warning]="error.severity === 'warning'">
+      <i class="fa-solid" [ngClass]="error.severity === 'error' ? 'fa-circle-xmark' : 'fa-circle-exclamation'"></i>
+      <span>{{ error.message }}</span>
+    </div>
+  </div>
+
+  <!-- Main Content: Items Table (Full Width) -->
+  <div class="main-content">
+    <div class="items-section" *ngIf="processingResult?.invoice">
+      <div class="items-header">
+        <span class="items-title">Chi Tiết Hàng Hóa</span>
+        <div class="items-header-actions">
+          <button mat-stroked-button style="color: white;" (click)="clearAll()" class="clear-invoice-btn"
+            matTooltip="Xóa hóa đơn hiện tại">
+            <mat-icon>delete_outline</mat-icon>
+            Xóa
+          </button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+      <div class="table-container">
+        <table mat-table [dataSource]="itemsFormArray.controls" class="items-table">
+          <ng-container matColumnDef="select">
+            <th mat-header-cell *matHeaderCellDef class="col-select">
+              <input type="checkbox" [checked]="isAllSelected()" [indeterminate]="isSomeSelected()"
+                (change)="toggleSelectAll()" class="item-checkbox">
+            </th>
+            <td mat-cell *matCellDef="let item; let i = index" class="col-select">
+              <input type="checkbox" [checked]="selectedItems.has(i)" (change)="toggleSelectItem(i)"
+                class="item-checkbox">
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="stt">
+            <th mat-header-cell *matHeaderCellDef class="col-stt">STT</th>
+            <td mat-cell *matCellDef="let item" class="col-stt">{{ item.get('stt').value }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef class="col-desc">Tên hàng hóa / dịch vụ</th>
+            <td mat-cell *matCellDef="let item; let i = index" class="col-desc">
+              {{ item.get('description').value }}
+              <span *ngIf="isPromotionalItem(i)" class="km-badge">KM</span>
+            </td>
+          </ng-container>
+
+          <!-- Matched Product Column -->
+          <ng-container matColumnDef="matched_product">
+            <th mat-header-cell *matHeaderCellDef class="col-match">Sản phẩm</th>
+            <td mat-cell *matCellDef="let item; let i = index" class="col-match">
+              <div *ngIf="getMatchesForItem(i) as matches">
+                <select *ngIf="matches.length > 0" class="match-select"
+                  [ngClass]="getMatchScoreClass(matches[0] ? matches[0].score : 0)"
+                  (change)="onMatchSelected(i, matches[$any($event.target).selectedIndex])">
+                  <option *ngFor="let m of matches; let j = index" [selected]="j === 0">
+                    {{ m.product.Name || m.product.FullName }} ({{ (m.score * 100) | number:'1.0-0' }}%)
+                  </option>
+                </select>
+                <span *ngIf="matches.length === 0" class="no-match">--</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="unit">
+            <th mat-header-cell *matHeaderCellDef class="col-unit">ĐVT</th>
+            <td mat-cell *matCellDef="let item" class="col-unit">{{ item.get('unit').value }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="quantity">
+            <th mat-header-cell *matHeaderCellDef class="col-qty">SL</th>
+            <td mat-cell *matCellDef="let item" class="col-qty">{{ item.get('quantity').value | number }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="unit_price">
+            <th mat-header-cell *matHeaderCellDef class="col-price">Đơn giá</th>
+            <td mat-cell *matCellDef="let item" class="col-price">{{ formatCurrency(item.get('unit_price').value) }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="amount">
+            <th mat-header-cell *matHeaderCellDef class="col-amount">Thành tiền</th>
+            <td mat-cell *matCellDef="let item; let i = index" class="col-amount"
+              [class.error-cell]="hasValidationError('items[' + i + '].amount')">
+              {{ formatCurrency(item.get('amount').value) }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="amount_after_vat">
+            <th mat-header-cell *matHeaderCellDef class="col-amount">Thành tiền sau thuế</th>
+            <td mat-cell *matCellDef="let item" class="col-amount">
+              {{ item.get('amount_after_vat').value != null ? formatCurrency(item.get('amount_after_vat').value) : '-' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef class="col-actions"></th>
+            <td mat-cell *matCellDef="let item; let i = index" class="col-actions">
+              <button class="remove-item-btn" (click)="removeItem(i)" matTooltip="Xóa sản phẩm này">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            [class.promo-row]="row.get('amount')?.value === 0 && row.get('unit_price')?.value === 0"></tr>
+        </table>
+      </div>
+      </div><!-- /table-wrapper -->
+
+      <!-- Summary - Inline -->
+      <div class="summary-section" [formGroup]="invoiceForm">
+        <div class="action-buttons">
+          <button *ngIf="!isCloneMode" mat-raised-button color="primary" class="update-price-btn" (click)="updatePrices()"
+            [disabled]="isMatching || selectedItems.size === 0"
+            matTooltip="{{ selectedItems.size === 0 ? 'Chọn sản phẩm để cập nhật' : 'Cập nhật ' + selectedItems.size + ' sản phẩm đã chọn' }}">
+            <mat-spinner *ngIf="isMatching" diameter="16"></mat-spinner>
+            <mat-icon *ngIf="!isMatching">system_update</mat-icon>
+            {{ isMatching ? 'Đang tìm...' : 'Cập nhật (' + selectedItems.size + ')' }}
+          </button>
+          <button *ngIf="isCloneMode" mat-raised-button color="warn" class="update-price-btn" (click)="updateClonePrices()"
+            [disabled]="isMatching || selectedItems.size === 0"
+            matTooltip="{{ selectedItems.size === 0 ? 'Chọn sản phẩm để cập nhật' : 'Cập nhật ' + selectedItems.size + ' Clone đã chọn' }}">
+            <mat-spinner *ngIf="isMatching" diameter="16"></mat-spinner>
+            <mat-icon *ngIf="!isMatching">content_copy</mat-icon>
+            {{ isMatching ? 'Đang tìm...' : 'Cập nhật Clone (' + selectedItems.size + ')' }}
+          </button>
+          <!-- Save to Firestore button -->
+          <button mat-raised-button color="accent" class="save-firestore-btn"
+            [disabled]="isSavingToFirestore || savedToFirestore" (click)="saveToFirestore()"
+            matTooltip="Lưu hóa đơn vào Firestore để đồng bộ">
+            <mat-spinner *ngIf="isSavingToFirestore" diameter="16"></mat-spinner>
+            <mat-icon *ngIf="!isSavingToFirestore && !savedToFirestore">cloud_upload</mat-icon>
+            <mat-icon *ngIf="savedToFirestore">check_circle</mat-icon>
+            <span *ngIf="!isSavingToFirestore && !savedToFirestore">Lưu vào hệ thống</span>
+            <span *ngIf="isSavingToFirestore">Đang lưu...</span>
+            <span *ngIf="savedToFirestore">Đã lưu</span>
+          </button>
+        </div>
+
+        <div class="summary-details">
+          <div class="summary-items" formGroupName="summary">
+            <div class="summary-item">
+              <span class="sum-label">Tiền hàng:</span>
+              <span class="sum-value" [class.error-value]="hasValidationError('summary.total_amount_before_vat')">{{
+                formatCurrency(invoiceForm.get('summary.total_amount_before_vat')?.value) }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="sum-label">VAT ({{ invoiceForm.get('summary.vat_rate')?.value }}):</span>
+              <span class="sum-value" [class.error-value]="hasValidationError('summary.vat_amount')">{{
+                formatCurrency(invoiceForm.get('summary.vat_amount')?.value) }}</span>
+            </div>
+            <div class="summary-item total">
+              <span class="sum-label">Tổng:</span>
+              <span class="sum-value" [class.error-value]="hasValidationError('summary.total_payment')">
+                {{ formatCurrency(invoiceForm.get('summary.total_payment')?.value) }}
+              </span>
+            </div>
+          </div>
+          <div class="summary-words">
+            {{ invoiceForm.get('summary.total_payment_in_words')?.value }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!processingResult?.invoice && !isProcessing">
+      <i class="fa-solid fa-file-circle-plus empty-icon"></i>
+      <p>Tải lên file XML/PDF hoặc chọn email hóa đơn để bắt đầu</p>
+    </div>
+  </div>
+</div>

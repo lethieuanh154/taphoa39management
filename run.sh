@@ -1,0 +1,1 @@
+$env:USER='admin';$env:Password='LAMBinh123@';$env:LatestBranchId='878979';$env:retailer='songminhcr'; ng serve

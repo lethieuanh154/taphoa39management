@@ -1,0 +1,697 @@
+.product-row-container {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s ease;
+  position: relative;
+}
+
+.product-row-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  opacity: 1;
+  z-index: -1;
+}
+
+.product-row-container:hover {
+  filter: brightness(0.92);
+}
+
+.master-row {
+  display: flex;
+  min-height: 45px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  min-width: fit-content;
+}
+
+.master-row.expanded {
+  border-bottom: 2px solid #667eea;
+}
+
+/* Override cursor for input fields */
+.master-row input {
+  cursor: text;
+}
+
+/* Cell Widths - Match header exactly */
+.expand-cell { width: 40px; flex-shrink: 0; }
+.checkbox-cell { width: 40px; flex-shrink: 0; }
+.image-cell { width: 60px; flex-shrink: 0; }
+.code-cell { width: 130px; flex-shrink: 0; }
+.name-cell { width: 220px; flex-shrink: 0; }
+.price-cell { width: 100px; flex-shrink: 0; }
+.cost-cell { width: 100px; flex-shrink: 0; }
+.onhand-cell { width: 90px; flex-shrink: 0; }
+.unit-cell { width: 80px; flex-shrink: 0; }
+.box-cell { width: 80px; flex-shrink: 0; }
+.retail-cell { width: 80px; flex-shrink: 0; }
+.discount-cell { width: 100px; flex-shrink: 0; }
+.discount2-cell { width: 100px; flex-shrink: 0; }
+.totalprice-cell { width: 130px; flex-shrink: 0; }
+.action-cell { width: 70px; flex-shrink: 0; }
+
+/* Expand Button */
+.expand-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.expand-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.expand-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.expand-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: #667eea;
+}
+
+.child-count {
+  font-size: 10px;
+  color: #666;
+  font-weight: 600;
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+/* Checkbox Cell */
+.checkbox-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Image Cell */
+.image-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.img-wrapper {
+  width: 50px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.product-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+/* Sticky Columns */
+.sticky-column {
+  position: sticky;
+  background: inherit;
+  z-index: 2;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.code-cell.sticky-column {
+  left: 156px; /* 40px (expand) + 40px (checkbox) + 60px (image) + 8px*2 (gaps) */
+}
+
+.name-cell.sticky-column {
+  left: 294px; /* 40 + 40 + 60 + 8*3 (gaps) + 130 (code) */
+}
+
+/* Cell Inputs */
+.cell-input {
+  width: calc(100% - 4px);
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cell-input:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #ccc;
+}
+
+.cell-input:focus {
+  background: #fff;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.name-input {
+  font-weight: 500;
+}
+
+.numeric-input {
+  text-align: right;
+ 
+}
+
+.total-input {
+  background-color: #fff9e6;
+  font-weight: 600;
+}
+
+.total-input:focus {
+  background-color: #fff;
+  border-color: #ff9800;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.1);
+}
+
+/* Invoice auto-filled highlight */
+.invoice-filled {
+  border-left: 3px solid #2196F3 !important;
+  background-color: #e3f2fd !important;
+}
+
+.invoice-filled:focus {
+  background-color: #fff !important;
+}
+
+/* Read-only values */
+.readonly-value {
+  display: block;
+  padding: 0px 8px 0;
+  font-size: 13px;
+  color: #333;
+  text-align: right;
+ 
+}
+
+.clone-disabled {
+  color: #bbb;
+  text-align: center;
+}
+
+/* Value with diff indicator wrapper */
+.value-with-diff {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  width: 100%;
+}
+
+/* Diff indicator (stock-style) */
+.diff-indicator {
+  position: absolute;
+  bottom: -2px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.diff-indicator.diff-increase {
+  color: #014d34;
+}
+
+.diff-indicator.diff-decrease {
+  color: #ef4444;
+}
+
+.diff-arrow {
+  font-size: 12px !important;
+  width: 12px !important;
+  height: 12px !important;
+  line-height: 12px !important;
+}
+
+.diff-value {
+  font-size: 9px;
+}
+
+/* Price/Cost cells */
+.price-cell,
+.cost-cell,
+.onhand-cell,
+.box-cell,
+.retail-cell,
+.discount-cell,
+.discount2-cell,
+.totalprice-cell {
+  display: flex;
+  align-items: center;
+  text-align: center;
+}
+
+/* Action Cell */
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 4px;
+}
+
+.clone-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #667eea;
+}
+
+.clone-btn:hover {
+  background-color: #e8eaf6;
+  color: #3949ab;
+}
+
+.clone-btn:active {
+  background-color: #c5cae9;
+}
+
+.clone-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.edit-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #f57c00;
+}
+
+.edit-btn:hover {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.edit-btn:active {
+  background-color: #ffe0b2;
+}
+
+.edit-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.sync-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #00897b;
+}
+
+.sync-btn:hover:not(:disabled) {
+  background-color: #e0f2f1;
+  color: #00695c;
+}
+
+.sync-btn:active:not(:disabled) {
+  background-color: #b2dfdb;
+}
+
+.sync-btn:disabled {
+  color: #90a4ae;
+  cursor: not-allowed;
+}
+
+.sync-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.sync-btn mat-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.history-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #7c4dff;
+}
+
+.history-btn:hover {
+  background-color: #ede7f6;
+  color: #651fff;
+}
+
+.history-btn:active {
+  background-color: #d1c4e9;
+}
+
+.history-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.remove-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #9e9e9e;
+}
+
+.remove-btn:hover {
+  background-color: #f5f5f5;
+  color: #616161;
+}
+
+.remove-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.delete-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #f60c0c;
+}
+
+.delete-btn:hover {
+  background-color: #ffebee;
+  color: #f44336;
+}
+
+.delete-btn:active {
+  background-color: #ffcdd2;
+}
+
+.delete-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Children Container */
+.children-container {
+  background: rgba(102, 126, 234, 0.03);
+  border-top: 1px solid #e0e0e0;
+  padding: 8px 0;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .master-row {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .cell-input {
+    font-size: 12px;
+    height: 32px;
+  }
+
+  /* Responsive widths - match header */
+  .expand-cell { width: 35px; }
+  .checkbox-cell { width: 35px; }
+  .image-cell { width: 50px; }
+  .code-cell { width: 110px; }
+  .name-cell { width: 180px; }
+  .price-cell { width: 90px; }
+  .cost-cell { width: 90px; }
+  .onhand-cell { width: 70px; }
+  .unit-cell { width: 70px; }
+  .box-cell { width: 70px; }
+  .retail-cell { width: 70px; }
+  .discount-cell { width: 90px; }
+  .discount2-cell { width: 90px; }
+  .totalprice-cell { width: 110px; }
+  .action-cell { width: 60px; }
+
+  .code-cell.sticky-column {
+    left: 127px; /* 35 + 35 + 50 + 6*2 */
+  }
+
+  .name-cell.sticky-column {
+    left: 249px; /* 35 + 35 + 50 + 6*3 + 110 + 6 */
+  }
+}
+
+@media (max-width: 1300px) {
+  .master-row {
+    font-size: 12px;
+    gap: 6px;
+    padding: 4px 6px;
+  }
+
+  .cell-input {
+    font-size: 12px;
+    height: 32px;
+    padding: 4px 6px;
+  }
+
+  /* Responsive widths - match header at 1300px */
+  .expand-cell { width: 35px; }
+  .checkbox-cell { width: 35px; }
+  .image-cell { width: 50px; }
+  .code-cell { width: 100px; }
+  .name-cell { width: 180px; }
+  .price-cell { width: 90px; }
+  .cost-cell { width: 90px; }
+  .onhand-cell { width: 70px; }
+  .unit-cell { width: 65px; }
+  .box-cell { width: 65px; }
+  .retail-cell { width: 65px; }
+  .discount-cell { width: 85px; }
+  .discount2-cell { width: 85px; }
+  .totalprice-cell { width: 100px; }
+  .action-cell { width: 55px; }
+
+  .img-wrapper {
+    width: 45px;
+    height: 36px;
+  }
+
+  .code-cell.sticky-column {
+    left: 126px; /* 35 + 35 + 50 + 6*1 */
+  }
+
+  .name-cell.sticky-column {
+    left: 238px; /* 35 + 35 + 50 + 6*2 + 100 + 6 */
+  }
+
+  .delete-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .delete-btn mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Action column: desktop vs iPad toggle */
+.action-ipad {
+  display: none;
+}
+
+.action-menu-btn {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  color: #667eea;
+}
+
+/* iPad / tablet responsive */
+@media (max-width: 1100px) {
+  .master-row {
+    font-size: 13px;
+    gap: 3px;
+    padding: 3px 4px;
+    min-width: auto;
+  }
+
+  .cell-input {
+    font-size: 13px;
+    height: 30px;
+    padding: 3px 4px;
+  }
+
+  /* Hide less-critical columns on iPad */
+  .ipad-hide {
+    display: none !important;
+  }
+
+  /* Hide desktop action buttons, show dropdown */
+  .action-desktop {
+    display: none !important;
+  }
+
+  .action-ipad {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Columns use flex to fill available width - match header */
+  .expand-cell { width: 25px; flex: none; }
+  .image-cell { width: 36px; flex: none; }
+  .code-cell { flex: 1; min-width: 70px; width: auto; }
+  .name-cell { flex: 2; min-width: 100px; width: auto; }
+  .price-cell { flex: 1; min-width: 60px; width: auto; }
+  .cost-cell { flex: 1; min-width: 60px; width: auto; }
+  .onhand-cell { flex: 0.8; min-width: 50px; width: auto; }
+  .box-cell { flex: 0.7; min-width: 45px; width: auto; }
+  .retail-cell { flex: 0.7; min-width: 45px; width: auto; }
+  .totalprice-cell { flex: 1.2; min-width: 70px; width: auto; }
+  .action-cell { width: 36px; flex: none; }
+
+  .img-wrapper {
+    width: 32px;
+    height: 28px;
+  }
+
+  .readonly-value {
+    font-size: 13px;
+  }
+
+  .action-menu-btn {
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    padding: 0;
+  }
+
+  .action-menu-btn mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Remove sticky on iPad - not needed when all columns fit */
+  .sticky-column {
+    position: static;
+    box-shadow: none;
+  }
+
+  .code-cell.sticky-column {
+    left: auto;
+  }
+
+  .name-cell.sticky-column {
+    left: auto;
+  }
+}
+
+/* OnHand dual display (OnHand/OnHandNV) */
+.onhand-dual {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.onhand-kv {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.onhand-separator {
+  color: #9e9e9e;
+}
+
+.onhand-nv {
+  color: #f57c00;
+  font-weight: 500;
+}

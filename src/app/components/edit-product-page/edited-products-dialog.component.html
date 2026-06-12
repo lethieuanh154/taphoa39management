@@ -1,0 +1,55 @@
+<h1 mat-dialog-title class="dialog-title">Những mặt hàng đã được thay đổi</h1>
+<div mat-dialog-content class="dialog-content">
+  <div class="table-container">
+    <!-- Header Row -->
+    <div class="header-scroll-sync" #headerScrollSync>
+      <div class="table-header">
+        <div class="header-cell expand-col"></div>
+        <div class="header-cell checkbox-col" title="Tính trung bình">TB</div>
+        <div class="header-cell image-col">Ảnh</div>
+        <div class="header-cell code-col sticky-header-col">Mã hàng</div>
+        <div class="header-cell name-col sticky-header-col">Tên hàng</div>
+        <div class="header-cell price-col" title="Giá bán mới">Giá bán</div>
+        <div class="header-cell cost-col" title="Giá vốn mới">Giá vốn</div>
+        <div class="header-cell onhand-col">Tồn kho</div>
+        <div class="header-cell unit-col">Đơn vị</div>
+        <div class="header-cell box-col">SL</div>
+        <div class="header-cell retail-col">Lẻ</div>
+        <div class="header-cell discount-col" title="Chiết khấu / sản phẩm">CK/SP</div>
+        <div class="header-cell discount2-col" title="Chiết khấu / tổng tiền">CK/TT</div>
+        <div class="header-cell totalprice-col">Thành tiền</div>
+      </div>
+    </div>
+
+    <!-- Products Container with Virtual Scrolling -->
+    <cdk-virtual-scroll-viewport class="products-viewport" [itemSize]="50" [minBufferPx]="500" [maxBufferPx]="1000">
+      <ng-container *cdkVirtualFor="let group of productGroups; trackBy: trackByGroup">
+        <app-product-row
+          [product]="group.master"
+          [childProducts]="group.children"
+          [productColor]="getProductColor(group.master.Id)"
+          (productChange)="onProductChange($event)"
+          (childrenChange)="onChildrenChange(group.master.Id, $event)">
+        </app-product-row>
+      </ng-container>
+    </cdk-virtual-scroll-viewport>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="productGroups.length === 0">
+      <mat-icon class="empty-icon">info</mat-icon>
+      <h3>Không có sản phẩm nào được chỉnh sửa</h3>
+      <p>Vui lòng chỉnh sửa sản phẩm trước khi cập nhật</p>
+    </div>
+  </div>
+</div>
+
+<div mat-dialog-actions class="dialog-actions">
+  <button mat-button class='send-data-to-kiotviet' (click)="sendDataClick()">
+    <mat-icon>cloud_upload</mat-icon>
+    Gửi Dữ liệu đến KiotViet
+  </button>
+  <button mat-button mat-dialog-close class="close-button">
+    <mat-icon>close</mat-icon>
+    Đóng
+  </button>
+</div>

@@ -1,3 +1,11 @@
+export interface GiftEntry {
+  productId: string;
+  code: string;
+  name: string;
+  basePrice: number;
+  quantity: number;
+}
+
 export interface Promotion {
   id: string;
   name: string;
@@ -28,6 +36,7 @@ export interface Promotion {
   giftProductName?: string;
   giftProductBasePrice?: number;
   giftQuantity?: number;
+  giftItems?: GiftEntry[];  // N gift products (Type 1 multi-gift)
 
   // Date range
   fromDate: string;
@@ -39,7 +48,9 @@ export interface Promotion {
 
   // KiotViet sync
   kiotVietCampaignId?: number;           // Campaign.Id từ KiotViet response (= PromotionId in invoice)
+  kiotVietCampaignCode?: string;         // Campaign.Code từ KiotViet response (dạng "KM000...")
   kiotVietSalePromotionId?: number;    // SalePromotions[0].Id từ KiotViet response (= SalePromotionId in invoice)
+  kiotVietSalePromotionIds?: { [productId: string]: number }; // Map productId → SalePromotionId cho multi-gift
   kiotVietPromotionType?: 5 | 6;       // 5 = giảm giá hàng, 6 = tặng hàng
   kiotVietSynced?: boolean;
 }

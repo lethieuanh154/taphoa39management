@@ -1,0 +1,123 @@
+<div class="clone-product-dialog">
+  <div class="dialog-header">
+    <h2 class="dialog-title">
+      <mat-icon class="title-icon">content_copy</mat-icon>
+      Clone sản phẩm
+    </h2>
+  </div>
+
+  <div class="content" *ngIf="masterProduct">
+    <!-- Source Product Info -->
+    <div class="form-section">
+      <h3 class="section-title">
+        <mat-icon>inventory_2</mat-icon>
+        Sản phẩm gốc
+      </h3>
+
+      <div class="source-info">
+        <div class="info-row">
+          <span class="label">Mã hàng:</span>
+          <span class="value">{{ masterProduct.Code }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Tên hàng:</span>
+          <span class="value">{{ masterProduct.Name || masterProduct.FullName }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Đơn vị:</span>
+          <span class="value">{{ masterProduct.Unit }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Tồn kho KV:</span>
+          <span class="value">{{ formatNumber(masterProduct.OnHand) }}</span>
+        </div>
+        <div class="info-row" *ngIf="childProducts.length > 0">
+          <span class="label">Đơn vị con:</span>
+          <span class="value">{{ childProducts.length }} đơn vị</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clone Configuration -->
+    <div class="form-section">
+      <h3 class="section-title">
+        <mat-icon>settings</mat-icon>
+        Cấu hình Clone
+      </h3>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Tồn kho ban đầu (OnHandNV)</mat-label>
+        <input matInput type="number" [(ngModel)]="cloneOnHandNV"
+               (ngModelChange)="onOnHandNVChange()"
+               placeholder="0" min="0" />
+        <mat-icon matPrefix>inventory</mat-icon>
+        <mat-hint>Tồn kho cho sản phẩm clone (đơn vị cơ bản: {{ masterProduct.Unit }})</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <!-- Preview -->
+    <div class="form-section">
+      <h3 class="section-title">
+        <mat-icon>preview</mat-icon>
+        Xem trước sản phẩm clone
+      </h3>
+
+      <div class="preview-list">
+        <div class="preview-item" *ngFor="let item of previewProducts; let i = index"
+             [class.master]="i === 0"
+             [class.already-exists]="item.alreadyExists">
+          <div class="preview-row">
+            <span class="preview-code">{{ item.code }}</span>
+            <span class="preview-unit">{{ item.unit }}</span>
+            <span class="already-cloned-badge" *ngIf="item.alreadyExists">
+              <mat-icon>check_circle</mat-icon>
+              Đã clone
+            </span>
+          </div>
+          <div class="preview-row">
+            <span class="preview-name">{{ item.name }}</span>
+          </div>
+          <div class="preview-row">
+            <span class="preview-label">OnHandNV:</span>
+            <span class="preview-value">{{ formatNumber(item.onHandNV) }}</span>
+            <span class="preview-conversion" *ngIf="item.conversionValue > 1">
+              ({{ item.conversionValue }} x đơn vị cơ bản)
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="notes" *ngIf="!allProductsAlreadyCloned()">
+      <mat-icon>info</mat-icon>
+      <span>
+        Sản phẩm clone sẽ có <strong>isClone = true</strong>, <strong>OnHand = 0</strong>.
+        Tồn kho sẽ được quản lý qua <strong>OnHandNV</strong> và không đồng bộ với KiotViet.
+      </span>
+    </div>
+
+    <!-- All cloned notice -->
+    <div class="notes all-cloned-notice" *ngIf="allProductsAlreadyCloned()">
+      <mat-icon>check_circle</mat-icon>
+      <span>
+        <strong>Tất cả sản phẩm đã được clone trước đó.</strong>
+        Không cần tạo thêm clone mới.
+      </span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button mat-stroked-button (click)="cancel()">
+      <mat-icon>close</mat-icon>
+      {{ allProductsAlreadyCloned() ? 'Đóng' : 'Hủy' }}
+    </button>
+    <span class="spacer"></span>
+    <button mat-raised-button color="primary" (click)="save()"
+            [disabled]="saving || allProductsAlreadyCloned()"
+            *ngIf="!allProductsAlreadyCloned()">
+      <mat-icon>{{ saving ? 'hourglass_empty' : 'content_copy' }}</mat-icon>
+      {{ saving ? 'Đang clone...' : 'Clone' }}
+    </button>
+  </div>
+</div>

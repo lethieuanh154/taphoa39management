@@ -57,6 +57,11 @@
         <span class="nav-text" *ngIf="!sidebarCollapsed">Khuyến mãi</span>
       </a>
 
+      <a class="nav-item" routerLink="/edit-products" routerLinkActive="active">
+        <i class="fa-solid fa-box-open"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Sửa hàng hóa</span>
+      </a>
+
       <!-- User info & Logout -->
       <div class="sidebar-footer">
         <div class="user-info" *ngIf="auth.user && !sidebarCollapsed">
@@ -73,5 +78,7 @@
     <main class="content">
       <router-outlet></router-outlet>
     </main>
+
+    <app-chat-bubble></app-chat-bubble>
   </div>
 </ng-container>
