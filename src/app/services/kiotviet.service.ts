@@ -1299,6 +1299,7 @@ export class KiotvietService {
                 IsLotSerialControl: child.IsLotSerialControl || false,
                 IsBatchExpireControl: child.IsBatchExpireControl || false,
                 ConversionValue: child.ConversionValue,
+                TaxIds: child.TaxIds ?? master.TaxIds,  // Carry tax for transform → Tax field
                 ProductType: child.ProductType || master.ProductType || 2,
                 AllowsSale: child.AllowsSale ?? true,
                 CategoryId: child.CategoryId || master.CategoryId,
@@ -1388,6 +1389,7 @@ export interface KiotVietSuggestProduct {
   TotalOnHand: number;
   VariantCount: number;
   OrderTemplate?: string;
+  TaxIds?: number[] | number | string; // KiotViet tax id(s), mapped → Tax value on transform
 }
 
 // ========= KiotViet Invoice Interface =========

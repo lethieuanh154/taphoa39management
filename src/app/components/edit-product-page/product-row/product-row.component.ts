@@ -1182,6 +1182,10 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
             this.product.OnHand = masterUpdate.OnHand;
             this.product.Image = masterUpdate.Image;
             this.product.OrderTemplate = masterUpdate.OrderTemplate;
+            // Update Tax from KiotViet (tax_id/tax_name/tax_text → Tax value)
+            if ((masterUpdate as any).Tax !== undefined) {
+              (this.product as any).Tax = (masterUpdate as any).Tax;
+            }
 
             console.log(`Master after update: Name="${this.product.Name}" FullName="${this.product.FullName}" Cost=${this.product.Cost} BasePrice=${this.product.BasePrice} OnHand=${this.product.OnHand}`);
 
@@ -1219,6 +1223,9 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
               this.childProducts[childIndex].Cost = childUpdate.Cost;
               this.childProducts[childIndex].OnHand = childUpdate.OnHand;
               this.childProducts[childIndex].OrderTemplate = childUpdate.OrderTemplate;
+              if ((childUpdate as any).Tax !== undefined) {
+                (this.childProducts[childIndex] as any).Tax = (childUpdate as any).Tax;
+              }
               updatedChildIds.add(this.childProducts[childIndex].Id);
               console.log(`  Child (API): ${childUpdate.Code} Name="${oldName}"→"${this.childProducts[childIndex].Name}" NameOriginal="${(childUpdate as any).NameOriginal}" Cost=${childUpdate.Cost} BasePrice=${childUpdate.BasePrice} OnHand=${childUpdate.OnHand}`);
               // Clear localStorage edit so synced data isn't overwritten by stale cache
@@ -1231,9 +1238,12 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
           const masterOnHand = this.product.OnHand;
           const masterCost = this.product.Cost;
           const masterBasePrice = this.product.BasePrice;
+          const masterTax = (this.product as any).Tax;
 
           for (const child of this.childProducts) {
             if (updatedChildIds.has(child.Id)) continue;
+            // All units share the same tax → inherit from master
+            if (masterTax !== undefined) (child as any).Tax = masterTax;
 
             const childConversion = this.parseNumber(child.ConversionValue) || 1;
             // OnHand proportional: for sync, master's OnHand IS the new total from KiotViet

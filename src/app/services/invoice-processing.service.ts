@@ -15,10 +15,10 @@ import { environment } from '../../environments/environment';
 })
 export class InvoiceProcessingService {
 
-  // Backend API endpoints
-  private readonly PROCESS_INVOICE_URL = `${environment.domainUrl}/v1/process-invoice`;
-  private readonly PROCESS_IMAGE_URL = `${environment.domainUrl}/v1/process-image`;
-  private readonly HEALTH_URL = `${environment.domainUrl}/v1/health`;
+  // Backend API endpoints — Management dùng /api/v1/ (Nginx chỉ proxy /api/)
+  private readonly PROCESS_INVOICE_URL = `${environment.domainUrl}/api/v1/process-invoice`;
+  private readonly PROCESS_IMAGE_URL = `${environment.domainUrl}/api/v1/process-image`;
+  private readonly HEALTH_URL = `${environment.domainUrl}/api/v1/health`;
 
   // Processing steps observable (OCR disabled, direct Gemini)
   private processingStepsSubject = new BehaviorSubject<ProcessingStep[]>([

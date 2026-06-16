@@ -36,15 +36,17 @@
 .search-bar {
   position: absolute;
   top: 5px;
-  width: 500px !important;
+  width: 80%;
+  max-width: 500px;
+  min-height: 42px;
   margin-left: 30px;
   display: flex;
   background-color: #f9f9f9;
   border-radius: 5px;
   box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
-  width: 80%;
   border: 2px solid #5568d3;
-  padding-right: 30px;
+  padding-right: 35px;
+  box-sizing: border-box;
 }
 
 .search-bar:focus {
@@ -382,8 +384,9 @@ app-product-row {
 /* Barcode scan button - inside search bar */
 .barcode-scan-btn {
   position: absolute;
-  left: 505px;
-  top: 15px;
+  left: 500px;
+  top: 50%;
+  transform: translateY(-50%);
   color: #888;
   font-size: 25px;
   cursor: pointer;

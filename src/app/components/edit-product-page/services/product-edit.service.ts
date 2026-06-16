@@ -79,7 +79,7 @@ export class ProductEditService {
     );
 
     // Filter products by search term (exact Code match OR partial Name match)
-    const matchedProducts = allProducts.filter(product => {
+    let matchedProducts = allProducts.filter(product => {
       const code = (product.Code || '').toLowerCase();
       const name = (product.FullName || product.Name || '').toLowerCase();
       return code === normalizedSearch || name.includes(normalizedSearch);
@@ -95,6 +95,29 @@ export class ProductEditService {
 
     if (matchedProducts.length === 0) {
       return [];
+    }
+
+    // Verify clone products still exist in Firebase (may have been deleted from BanHang app)
+    const cloneIds = matchedProducts
+      .filter(p => (p as any).isClone)
+      .map(p => p.Id);
+
+    if (cloneIds.length > 0) {
+      try {
+        const existingIds = new Set(await this.productService.checkCloneProductsExist(cloneIds));
+        const deletedIds = cloneIds.filter(id => !existingIds.has(id));
+        for (const id of deletedIds) {
+          await this.indexedDBService.delete(this.dbName, this.dbVersion, this.storeName, id);
+          console.log(`🗑️ [searchProducts] Removed stale clone ${id} from IndexedDB`);
+        }
+        if (deletedIds.length > 0) {
+          matchedProducts = matchedProducts.filter(
+            p => !(p as any).isClone || existingIds.has(p.Id)
+          );
+        }
+      } catch {
+        // Ignore verification errors — use IndexedDB data as fallback
+      }
     }
 
     // Expand to include all products in the same group

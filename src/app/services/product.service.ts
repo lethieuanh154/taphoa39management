@@ -3898,6 +3898,15 @@ export class ProductService {
       deleted_ids: string[];
     }>(url));
   }
+  async checkCloneProductsExist(ids: number[]): Promise<number[]> {
+    if (!ids || ids.length === 0) return [];
+    const url = `${environment.domainUrl}/api/firebase/products/batch-exists`;
+    const response = await firstValueFrom(
+      this.http.post<{ existing_ids: string[] }>(url, { ids: ids.map(String) })
+    );
+    return (response.existing_ids || []).map(Number);
+  }
+
   async addProductToIndexedDB(product: Product): Promise<void> {
     await this.ensureDBInitialized();
     const sanitized = this.sanitizeProductForStorage({ ...product });
@@ -4262,6 +4271,21 @@ export class ProductService {
   /**
    * Transform KiotViet suggest product to our Product model
    */
+  /**
+   * Map KiotViet TaxIds → Tax value, mirror backend get_tax_value (product_class.py).
+   * Id: 1→0, 2→5, 3→8, 4→10, 5→"KCT", 12→"KKKNT". Default 0.
+   */
+  private mapKiotVietTaxIdsToTax(taxIds: any): number | string {
+    const TAX_MAPPING: Record<number, number | string> = { 1: 0, 2: 5, 3: 8, 4: 10, 5: 'KCT', 12: 'KKKNT' };
+    let raw = taxIds;
+    if (raw === null || raw === undefined || raw === '' || (Array.isArray(raw) && raw.length === 0)) return 0;
+    if (Array.isArray(raw)) raw = raw[0];
+    if (raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '')) return 0;
+    const id = Number(raw);
+    if (!Number.isFinite(id)) return 0;
+    return TAX_MAPPING[id] ?? 0;
+  }
+
   private transformKiotVietToProduct(kvProduct: KiotVietSuggestProduct): Product {
     // Find master unit ID
     // Only use MasterUnitId (unit-conversion relationship), NOT MasterProductId (product-variant relationship)
@@ -4298,6 +4322,9 @@ export class ProductService {
       (kvProduct.NameOriginal || kvProduct.Name || '').trim() ||
       fullName.replace(/\s*\([^)]*\)\s*$/, '').trim();
 
+    // Map KiotViet TaxIds → Tax value (0/5/8/10/"KCT"/"KKKNT"), mirror backend get_tax_value
+    const taxValue = this.mapKiotVietTaxIdsToTax((kvProduct as any).TaxIds);
+
     return {
       Id: kvProduct.Id,
       Code: kvProduct.Code,
@@ -4316,6 +4343,7 @@ export class ProductService {
       MasterProductId: kvProduct.MasterProductId || null,
       CategoryId: kvProduct.CategoryId,
       Image: kvProduct.Image || null,
+      Tax: taxValue,
       ProductAttributes: productAttributes,
       ModifiedDate: now,
       CreatedDate: now,

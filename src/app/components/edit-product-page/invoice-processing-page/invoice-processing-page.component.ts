@@ -382,7 +382,7 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
     const formData = new FormData();
     formData.append('file', this.selectedFile);
 
-    this.http.post<any>(`${environment.domainUrl}/v1/parse-xml`, formData)
+    this.http.post<any>(`${environment.domainUrl}/api/v1/parse-xml`, formData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
