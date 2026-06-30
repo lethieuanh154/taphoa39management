@@ -129,35 +129,45 @@
       <span *ngIf="product.isClone" class="readonly-value clone-disabled">—</span>
     </div>
 
-    <!-- Action Column - Desktop (individual buttons) -->
+    <!-- Action Column - Desktop (single icon, hover to reveal) -->
     <div class="action-cell action-desktop">
-      <button class="sync-btn" *ngIf="!product.isClone" (click)="onSyncClick($event)"
-        [disabled]="isSyncing"
-        [matTooltip]="isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ KiotViet'"
-        type="button">
-        <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
-      </button>
-      <button class="clone-btn" *ngIf="!product.isClone" (click)="onCloneClick($event)" matTooltip="Clone sản phẩm" type="button">
-        <mat-icon>content_copy</mat-icon>
-      </button>
-      <button class="save-clone-btn" *ngIf="product.isClone && pendingCloneSave && product.Edited"
-        (click)="onSaveCloneClick($event)" matTooltip="Lưu cập nhật Clone" type="button"
-        style="color: #4CAF50;">
-        <mat-icon>save</mat-icon>
-      </button>
-      <button class="edit-btn" *ngIf="product.isClone && !(pendingCloneSave && product.Edited)"
-        (click)="onEditClick($event)" matTooltip="Chỉnh sửa sản phẩm" type="button">
-        <mat-icon>edit</mat-icon>
-      </button>
-      <button class="history-btn" *ngIf="product.isClone" (click)="onHistoryClick($event)" matTooltip="Lịch sử thay đổi" type="button">
-        <mat-icon>history</mat-icon>
-      </button>
-      <button class="remove-btn" (click)="onRemoveFromListClick($event)" matTooltip="Bỏ khỏi danh sách" type="button">
-        <mat-icon>visibility_off</mat-icon>
-      </button>
-      <button class="delete-btn" (click)="onDeleteClick($event)" matTooltip="Xóa sản phẩm" type="button">
-        <mat-icon>delete</mat-icon>
-      </button>
+      <div class="action-hover-wrapper">
+        <button class="action-trigger-btn" type="button" (click)="$event.stopPropagation()" matTooltip="Thao tác">
+          <mat-icon>more_horiz</mat-icon>
+        </button>
+        <div class="action-flyout">
+          <button class="print-btn" (click)="onPrintBarcodeClick($event)" matTooltip="In mã vạch" type="button">
+            <mat-icon>print</mat-icon>
+          </button>
+          <button class="sync-btn" *ngIf="!product.isClone" (click)="onSyncClick($event)"
+            [disabled]="isSyncing"
+            [matTooltip]="isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ KiotViet'"
+            type="button">
+            <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
+          </button>
+          <button class="clone-btn" *ngIf="!product.isClone" (click)="onCloneClick($event)" matTooltip="Clone sản phẩm" type="button">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button class="save-clone-btn" *ngIf="product.isClone && pendingCloneSave && product.Edited"
+            (click)="onSaveCloneClick($event)" matTooltip="Lưu cập nhật Clone" type="button"
+            style="color: #4CAF50;">
+            <mat-icon>save</mat-icon>
+          </button>
+          <button class="edit-btn" *ngIf="product.isClone && !(pendingCloneSave && product.Edited)"
+            (click)="onEditClick($event)" matTooltip="Chỉnh sửa sản phẩm" type="button">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button class="history-btn" *ngIf="product.isClone" (click)="onHistoryClick($event)" matTooltip="Lịch sử thay đổi" type="button">
+            <mat-icon>history</mat-icon>
+          </button>
+          <button class="remove-btn" (click)="onShowInfoClick($event)" matTooltip="Xem thông tin" type="button">
+            <mat-icon>info</mat-icon>
+          </button>
+          <button class="delete-btn" (click)="onDeleteClick($event)" matTooltip="Xóa sản phẩm" type="button">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Action Column - iPad (dropdown menu) -->
@@ -166,6 +176,10 @@
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #actionMenu="matMenu">
+        <button mat-menu-item (click)="onPrintBarcodeClick($event)">
+          <mat-icon>print</mat-icon>
+          <span>In mã vạch</span>
+        </button>
         <button mat-menu-item *ngIf="!product.isClone" (click)="onSyncClick($event)" [disabled]="isSyncing">
           <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
           <span>Đồng bộ KiotViet</span>
@@ -186,9 +200,9 @@
           <mat-icon>history</mat-icon>
           <span>Lịch sử</span>
         </button>
-        <button mat-menu-item (click)="onRemoveFromListClick($event)">
-          <mat-icon>visibility_off</mat-icon>
-          <span>Bỏ khỏi danh sách</span>
+        <button mat-menu-item (click)="onShowInfoClick($event)">
+          <mat-icon>info</mat-icon>
+          <span>Xem thông tin</span>
         </button>
         <button mat-menu-item (click)="onDeleteClick($event)" class="delete-menu-item">
           <mat-icon color="warn">delete</mat-icon>

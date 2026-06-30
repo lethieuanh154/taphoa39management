@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { ProductEditService, EditedProduct } from './services/product-edit.service';
+import { ProductEditService, EditedProduct, QueryCondition } from './services/product-edit.service';
 import { EditedItemDialog } from './edited-products-dialog.component';
 import { InputProductDialogComponent } from './add-product-dialog/add-product-dialog.component';
 import { AddOriginalProductDialogComponent } from './add-product-dialog/add-original-product-dialog.component';
@@ -26,6 +26,7 @@ import { InvoiceEmailListenerService } from '../../services/invoice-email-listen
 import { InvoicePriceUpdateService } from './invoice-processing-page/invoice-price-update.service';
 import { ProductHistoryService } from '../../services/product-history.service';
 import { PromotionListDialogComponent } from './promotion-list-dialog/promotion-list-dialog.component';
+import { ProductQueryDialogComponent } from './product-query-dialog/product-query-dialog.component';
 import { CrossTabSyncService, ProductOnHandUpdate } from '../../services/cross-tab-sync.service';
 import { GroupService } from '../../services/group.service';
 import { IndexedDBService } from '../../services/indexed-db.service';
@@ -96,6 +97,9 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
   searchTerm = '';
   userChangedFinalBasePrice: Record<string, boolean> = {};
   pendingCloneSave = false; // true when clone data is displayed but not yet saved
+
+  // Active advanced-query filter (shown as a chip next to the Query button)
+  activeQuery: { conditions: QueryCondition[]; limit: number } | null = null;
 
   constructor(
     public dialog: MatDialog,
@@ -346,6 +350,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
   async onSearch(event: Event) {
     this.searchTerm = (event.target as HTMLInputElement).value.trim();
+    this.activeQuery = null; // text search clears the advanced-query filter
 
     if (!this.searchTerm) {
       this.productGroups = [];
@@ -658,13 +663,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     }
   }
 
-  onRemoveFromList(groupIndex: number) {
-    this.productGroups = [
-      ...this.productGroups.slice(0, groupIndex),
-      ...this.productGroups.slice(groupIndex + 1)
-    ];
-  }
-
   private saveToLocalStorage(product: EditedProduct) {
     try {
       localStorage.setItem(`editing_childProduct_${product.Id}`, JSON.stringify(product));
@@ -886,6 +884,67 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       width: '900px',
       maxHeight: '85vh',
     });
+  }
+
+  /**
+   * Open the advanced query builder. Builds AND conditions on product fields,
+   * runs them client-side over the IndexedDB cache, and displays up to 10 results.
+   */
+  async openQueryDialog(): Promise<void> {
+    const fields = await this.productEditService.getQueryableFields();
+    const dialogRef = this.dialog.open(ProductQueryDialogComponent, {
+      width: '640px',
+      maxWidth: '96vw',
+      maxHeight: '85vh',
+      data: { fields }
+    });
+
+    dialogRef.afterClosed().subscribe(async (result: any) => {
+      if (!result?.conditions?.length) return;
+
+      this.isLoading = true;
+      try {
+        const limit = result.limit || 10;
+        const products = await this.productEditService.queryProducts(
+          result.conditions,
+          limit,
+          this.productColors
+        );
+        this.productGroups = this.groupProductsByMaster(products);
+        this.activeQuery = { conditions: result.conditions, limit };
+        this.searchTerm = '';
+        this.searchControl.setValue('');
+        console.log('✅ Query results:', this.productGroups.length, 'groups');
+      } catch (error) {
+        console.error('❌ Query error:', error);
+        this.productGroups = [];
+      } finally {
+        this.isLoading = false;
+      }
+    });
+  }
+
+  /**
+   * Human-readable summary of the active query filter, e.g. "Tax = 0 AND OnHand > 0".
+   */
+  get activeQueryText(): string {
+    if (!this.activeQuery) return '';
+    const opLabels: Record<string, string> = {
+      '=': '=', '!=': '≠', '>': '>', '<': '<', '>=': '≥', '<=': '≤', 'contains': 'chứa'
+    };
+    return this.activeQuery.conditions
+      .map(c => `${c.field} ${opLabels[c.operator] || c.operator} ${c.value}`)
+      .join(' AND ');
+  }
+
+  /**
+   * Clear the active query filter and its results.
+   */
+  clearQuery(): void {
+    this.activeQuery = null;
+    this.productGroups = [];
+    this.searchTerm = '';
+    this.searchControl.setValue('');
   }
 
   openInvoiceProcessing() {

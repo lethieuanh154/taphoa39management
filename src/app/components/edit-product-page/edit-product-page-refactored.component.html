@@ -21,6 +21,20 @@
   </div>
   
 
+  <div class="query-row">
+    <button mat-button class="query-button" (click)="openQueryDialog()" matTooltip="Query theo field (kết hợp AND, tối đa 10 kết quả)">
+      <mat-icon>filter_alt</mat-icon>
+      Query
+    </button>
+    <span class="query-active-chip" *ngIf="activeQuery">
+      <mat-icon class="chip-icon">filter_alt</mat-icon>
+      <span class="chip-text" [matTooltip]="activeQueryText">{{ activeQueryText }} · tối đa {{ activeQuery.limit }}</span>
+      <button class="chip-clear" type="button" (click)="clearQuery()" matTooltip="Xóa bộ lọc Query">
+        <mat-icon>close</mat-icon>
+      </button>
+    </span>
+  </div>
+
   <mat-toolbar class="toolbar">
     <button mat-button class="update-button" (click)="onUpdate()">
       <mat-icon>save</mat-icon>
@@ -94,7 +108,6 @@
         (productChange)="onProductChange($event, productGroups.indexOf(group))"
         (childrenChange)="onChildrenChange($event, productGroups.indexOf(group))"
         (deleteProduct)="onDeleteProduct($event, productGroups.indexOf(group))"
-        (removeFromList)="onRemoveFromList(productGroups.indexOf(group))"
         (saveCloneClick)="saveCloneProducts()"></app-product-row>
     </ng-container>
   </cdk-virtual-scroll-viewport>

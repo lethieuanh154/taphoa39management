@@ -14,6 +14,7 @@ import { DeleteConfirmDialogComponent } from '../delete-confirm-dialog/delete-co
 import { EditProductDialogComponent } from '../edit-product-dialog/edit-product-dialog.component';
 import { CloneProductDialogComponent } from '../clone-product-dialog/clone-product-dialog.component';
 import { ProductHistoryDialogComponent } from '../product-history-dialog/product-history-dialog.component';
+import { ProductInfoDialogComponent } from '../product-info-dialog/product-info-dialog.component';
 import { ProductService } from '../../../services/product.service';
 import { validateNumber } from '../utility-functions/app.validate-number';
 
@@ -71,7 +72,6 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
   @Output() cloneProduct = new EventEmitter<CloneProductEvent>();
   @Output() syncProduct = new EventEmitter<SyncProductEvent>();
   @Output() saveCloneClick = new EventEmitter<void>();
-  @Output() removeFromList = new EventEmitter<void>();
 
   // Sync state
   isSyncing = false;
@@ -856,12 +856,28 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   /**
-   * Handle delete button click - open confirmation dialog
+   * Handle show info button click - open dialog showing all fields of the
+   * master product (MasterUnit only). Works for both Original and Clone.
    */
-  onRemoveFromListClick(event: MouseEvent) {
+  onShowInfoClick(event: MouseEvent) {
     event.stopPropagation();
     event.preventDefault();
-    this.removeFromList.emit();
+
+    if (this.isDialogOpen) {
+      return;
+    }
+
+    this.isDialogOpen = true;
+
+    const dialogRef = this.dialog.open(ProductInfoDialogComponent, {
+      width: '600px',
+      maxHeight: '85vh',
+      data: { product: this.product }
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      this.isDialogOpen = false;
+    });
   }
 
   onDeleteClick(event: MouseEvent) {
@@ -903,6 +919,79 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
     event.stopPropagation();
     event.preventDefault();
     this.saveCloneClick.emit();
+  }
+
+  /**
+   * Handle print barcode button click - open barcode label print window.
+   * Renders a barcode label (Name + barcode + price) via JsBarcode and prints.
+   */
+  onPrintBarcodeClick(event: MouseEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.printBarcode();
+  }
+
+  private printBarcode(): void {
+    const code = (this.product.Code || '').toString();
+    const name = (this.product.Name || this.product.FullName || '').toString();
+    const price = this.formatNumber(this.product.BasePrice || 0);
+
+    // Số lượng in mặc định = tồn kho (giống KiotViet "Số lượng in")
+    const stock = this.parseNumber((this.product as any).OnHand) || this.parseNumber((this.product as any).OnHandNV) || 1;
+    const input = window.prompt('Số lượng tem cần in:', String(Math.max(1, Math.round(stock))));
+    if (input === null) return; // user huỷ
+    let copies = parseInt(input, 10);
+    if (!Number.isFinite(copies) || copies < 1) copies = 1;
+    if (copies > 5000) copies = 5000; // giới hạn như KiotViet
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) return;
+
+    const safe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    // 2 tem/hàng, khổ 72x22mm mỗi tem (mẫu giấy cuộn 2 nhãn - PrintSize "Base2Label" của KiotViet)
+    let cells = '';
+    for (let i = 0; i < copies; i++) {
+      cells += `<div class="label"><div class="name">${safe(name)}</div><svg class="barcode"></svg><div class="price">${price} VND</div></div>`;
+    }
+
+    printWindow.document.write(`
+    <html>
+      <head>
+        <title>In tem mã - ${safe(code)}</title>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+        <style>
+          @page { size: 72mm 22mm; margin: 0; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+          .sheet { display: flex; flex-wrap: wrap; width: 72mm; }
+          .label {
+            width: 36mm; height: 22mm; padding: 1mm 1.5mm;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden; page-break-inside: avoid;
+          }
+          .name { font-size: 8pt; font-weight: 600; line-height: 1.1; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .barcode { width: 100%; height: 9mm; }
+          .price { font-size: 9pt; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">${cells}</div>
+        <script>
+          window.onload = function () {
+            try {
+              document.querySelectorAll('.barcode').forEach(function (el) {
+                JsBarcode(el, ${JSON.stringify(code)}, { format: "CODE128", width: 1, displayValue: true, fontSize: 11, height: 28, margin: 0, textMargin: 0 });
+              });
+            } catch (e) {}
+            setTimeout(function () { window.print(); window.close(); }, 500);
+          };
+        </script>
+      </body>
+    </html>
+    `);
+
+    printWindow.document.close();
   }
 
   /**

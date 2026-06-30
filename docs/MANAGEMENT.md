@@ -319,3 +319,11 @@ Project sử dụng Angular 20 Standalone Components (không dùng NgModules tru
 |---------|----------|
 | `quanlysongminh` | Auth + Firestore data chính (shared với TapHoa39BanHang) |
 | `taphoa39khachhang` | Real-time order notifications (`orderNotifications` collection) |
+
+---
+
+## Edit Product Page - Product Row (Action Column)
+
+Cột "Thao tác" (desktop) gom các nút vào 1 icon (`more_horiz`); hover xổ ra flyout danh sách nút (CSS `.action-hover-wrapper` / `.action-flyout`). iPad vẫn dùng mat-menu.
+- **In mã vạch** — `onPrintBarcodeClick()` → `printBarcode()`: prompt số lượng (mặc định = tồn kho), mở window in tem bằng JsBarcode (CDN). Khớp format KiotViet `PrintBarCode2Label`/`Base2Label`: **trang tem 72×22mm chứa 2 tem (36mm/tem)**, CODE128 encode Mã hàng, nội dung Tên → barcode → mã số → giá + "VND".
+- Các nút khác: Sync (KV), Clone (KV), Edit/History (Clone), Bỏ khỏi danh sách, Xóa.

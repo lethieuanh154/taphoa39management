@@ -13,7 +13,10 @@
           <i class="fa-solid" [ngClass]="sidebarCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
         </button>
       </div>
-
+      <a class="nav-item" routerLink="/edit-products" routerLinkActive="active">
+        <i class="fa-solid fa-box-open"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Hàng hóa</span>
+      </a>
       <a class="nav-item" routerLink="/orders" routerLinkActive="active">
         <i class="fa-solid fa-cart-shopping"></i>
         <span class="nav-text" *ngIf="!sidebarCollapsed">Đơn hàng</span>
@@ -21,11 +24,11 @@
 
       <div class="nav-group">
         <div class="nav-item nav-group-header" (click)="showEmployeeSubmenu = !showEmployeeSubmenu"
-             [class.active]="showEmployeeSubmenu">
+          [class.active]="showEmployeeSubmenu">
           <i class="fa-solid fa-users"></i>
           <span class="nav-text" *ngIf="!sidebarCollapsed">Nhân viên</span>
           <i class="fa-solid fa-chevron-down submenu-arrow" *ngIf="!sidebarCollapsed"
-             [class.rotated]="showEmployeeSubmenu"></i>
+            [class.rotated]="showEmployeeSubmenu"></i>
         </div>
         <div class="submenu" *ngIf="showEmployeeSubmenu && !sidebarCollapsed">
           <a class="nav-item sub" routerLink="/employees" routerLinkActive="active">
@@ -55,11 +58,6 @@
       <a class="nav-item" routerLink="/promotions" routerLinkActive="active">
         <i class="fa-solid fa-tags"></i>
         <span class="nav-text" *ngIf="!sidebarCollapsed">Khuyến mãi</span>
-      </a>
-
-      <a class="nav-item" routerLink="/edit-products" routerLinkActive="active">
-        <i class="fa-solid fa-box-open"></i>
-        <span class="nav-text" *ngIf="!sidebarCollapsed">Hàng hóa</span>
       </a>
 
       <!-- User info & Logout -->

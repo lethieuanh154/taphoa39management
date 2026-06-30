@@ -938,7 +938,7 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
         unit: item.unit,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        amount: item.amount_after_vat || item.amount,
+        amount: item.amount,
         isPromotional: item.amount === 0 && item.unit_price === 0
       });
       const match = confirmedMatches.get(origIdx);
@@ -1345,8 +1345,8 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
           const amount = parseFloat(item.amount || item.total || item.totalAmount || item.ThTien) || 0;
           const vatAmount = parseFloat(item.taxAmount || item.vat_amount || item.TThue) || 0;
           const rawAat = item.amountAfterTax != null ? parseFloat(item.amountAfterTax) : null;
-          // Fallback: tính từ amount + vatAmount nếu backend không trả amountAfterTax
-          const aat = (rawAat && rawAat > amount) ? rawAat : (vatAmount > 0 ? amount + vatAmount : null);
+          // Backend đã trả amountAfterTax đúng (đã trừ chiết khấu + gồm thuế). Chỉ fallback khi thiếu.
+          const aat = (rawAat != null && rawAat > 0) ? rawAat : (vatAmount > 0 ? amount + vatAmount : null);
           if (index === 0) console.log('[XML DEBUG] item[0] amount=', amount, 'vatAmount=', vatAmount, 'rawAat=', rawAat, '→ aat=', aat);
           return {
             stt: index + 1,
@@ -1966,7 +1966,7 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
         unit: item.unit,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        amount: item.amount_after_vat || item.amount,
+        amount: item.amount,
         isPromotional: item.amount === 0 && item.unit_price === 0
       });
       const match = confirmedMatches.get(origIdx);

@@ -44,6 +44,14 @@ export interface EditedProduct extends Partial<Product> {
   KeepBasePrice?: boolean;  // Giữ nguyên giá bán khi cập nhật từ hóa đơn
 }
 
+export type QueryOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'contains';
+
+export interface QueryCondition {
+  field: string;
+  operator: QueryOperator;
+  value: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -240,6 +248,84 @@ export class ProductEditService {
   /**
    * Transform Product to EditedProduct with additional fields
    */
+  /**
+   * Get the list of queryable field names (union of keys across all products
+   * in IndexedDB), used for the query-builder field autocomplete.
+   */
+  async getQueryableFields(): Promise<string[]> {
+    const allProducts = await this.indexedDBService.getAll<Product>(
+      this.dbName,
+      this.dbVersion,
+      this.storeName
+    );
+    const keys = new Set<string>();
+    for (const p of allProducts) {
+      Object.keys(p || {}).forEach(k => {
+        if (!k.startsWith('_')) keys.add(k);
+      });
+    }
+    return Array.from(keys).sort((a, b) => a.localeCompare(b));
+  }
+
+  /**
+   * Firestore-style client-side query over the IndexedDB product cache.
+   * All conditions are combined with AND. Returns up to `limit` matched
+   * products (transformed + colored), ready for groupProductsByMaster().
+   */
+  async queryProducts(
+    conditions: QueryCondition[],
+    limit: number,
+    productColors: Record<string, string>
+  ): Promise<EditedProduct[]> {
+    const activeConditions = (conditions || []).filter(c => c && c.field && c.field.trim() !== '');
+
+    const allProducts = await this.indexedDBService.getAll<Product>(
+      this.dbName,
+      this.dbVersion,
+      this.storeName
+    );
+
+    let matched = allProducts;
+    if (activeConditions.length > 0) {
+      matched = allProducts.filter(p =>
+        activeConditions.every(c => this.matchCondition((p as any)[c.field], c.operator, c.value))
+      );
+    }
+
+    const limited = limit > 0 ? matched.slice(0, limit) : matched;
+    const flatProducts = limited.map(p => this.transformToEditedProduct(p));
+    assignColorsToProductList(flatProducts, productColors);
+
+    console.log(`🔎 [queryProducts] ${activeConditions.length} điều kiện → ${matched.length} khớp, hiển thị ${flatProducts.length}`);
+    return flatProducts;
+  }
+
+  /**
+   * Evaluate a single condition against a raw field value.
+   * Numeric operators require both sides numeric; '='/'!=' fall back to
+   * case-insensitive string compare; 'contains' is a substring match.
+   */
+  private matchCondition(raw: any, operator: QueryOperator, value: string): boolean {
+    const target = (value ?? '').toString().trim();
+    const rawNum = Number(raw);
+    const targetNum = Number(target);
+    const bothNumeric =
+      raw !== null && raw !== undefined && raw !== '' && target !== '' &&
+      Number.isFinite(rawNum) && Number.isFinite(targetNum);
+    const rawStr = (raw ?? '').toString().trim().toLowerCase();
+
+    switch (operator) {
+      case '>': return bothNumeric && rawNum > targetNum;
+      case '<': return bothNumeric && rawNum < targetNum;
+      case '>=': return bothNumeric && rawNum >= targetNum;
+      case '<=': return bothNumeric && rawNum <= targetNum;
+      case 'contains': return rawStr.includes(target.toLowerCase());
+      case '!=': return bothNumeric ? rawNum !== targetNum : rawStr !== target.toLowerCase();
+      case '=':
+      default: return bothNumeric ? rawNum === targetNum : rawStr === target.toLowerCase();
+    }
+  }
+
   private transformToEditedProduct(product: Product): EditedProduct {
     // Construct proper FullName: ProductName + ProductAttributes.Value + Unit
     let fullName = product.Name || '';
