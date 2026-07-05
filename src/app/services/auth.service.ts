@@ -6,7 +6,8 @@ import {
   signInWithPopup,
   signOut,
   User,
-  onAuthStateChanged
+  onAuthStateChanged,
+  onIdTokenChanged
 } from '@angular/fire/auth';
 import { BehaviorSubject } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -62,10 +63,25 @@ export class AuthService {
   // Concurrency lock
   private refreshPromise: Promise<boolean> | null = null;
 
+  // Firebase ID token cache (gui qua header X-Id-Token cho backend admin-auth)
+  private currentIdToken: string | null = null;
+
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.initAuthListener();
+      onIdTokenChanged(this.auth, async (user) => {
+        try {
+          this.currentIdToken = user ? await user.getIdToken() : null;
+        } catch {
+          this.currentIdToken = null;
+        }
+      });
     }
+  }
+
+  /** ID token da cache (dong bo) de interceptor gan header X-Id-Token. */
+  getCachedIdToken(): string | null {
+    return this.currentIdToken;
   }
 
   private initAuthListener(): void {

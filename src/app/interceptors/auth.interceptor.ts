@@ -14,15 +14,14 @@ export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, ne
     return next(req);
   }
 
-  // Add KiotViet token if available
+  // Add KiotViet token (Authorization, cho backend goi KiotViet) + Firebase ID token
+  // (X-Id-Token, cho backend admin-auth xac thuc nguoi dung Management)
   const kvToken = authService.getKiotVietToken();
-  let authReq = req;
-
-  if (kvToken) {
-    authReq = req.clone({
-      setHeaders: { Authorization: kvToken }
-    });
-  }
+  const idToken = authService.getCachedIdToken();
+  const setHeaders: Record<string, string> = {};
+  if (kvToken) setHeaders['Authorization'] = kvToken;
+  if (idToken) setHeaders['X-Id-Token'] = idToken;
+  const authReq = Object.keys(setHeaders).length ? req.clone({ setHeaders }) : req;
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
