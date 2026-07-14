@@ -1342,6 +1342,109 @@ export class KiotvietService {
       throw error;
     }
   }
+
+  // ========= Purchase Order API (Nhập hàng) =========
+
+  /**
+   * BranchId hiện tại (đọc từ localStorage nếu chưa nạp vào bộ nhớ).
+   */
+  getBranchId(): number {
+    if (!this.LatestBranchId) this.loadStoredCredentials();
+    return Number(this.LatestBranchId) || 0;
+  }
+
+  /**
+   * Tìm sản phẩm cho phiếu nhập hàng (đúng API màn Nhập hàng của KiotViet).
+   * GET /api/products/autocomplete?tearm=...&Type=1&PurchaseId=0
+   */
+  async autocompletePurchaseProducts(term: string): Promise<KiotVietPurchaseProduct[]> {
+    const url = `https://api-man1.kiotviet.vn/api/products/autocomplete?tearm=${encodeURIComponent(term)}&Type=1&PurchaseId=0`;
+    const result = await this.performKiotVietFetchWithRetry<any>(async (token) => {
+      return await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+          'Retailer': this.retailer as any,
+          'BranchId': this.LatestBranchId as any
+        }
+      });
+    });
+    return Array.isArray(result) ? result : (result?.Data || []);
+  }
+
+  /**
+   * Tìm nhà cung cấp theo tên (dùng để gán Supplier cho phiếu nhập).
+   * GET /api/suppliers/autocomplete?tearm=...
+   */
+  async autocompleteSuppliers(term: string): Promise<KiotVietSupplier[]> {
+    const url = `https://api-man1.kiotviet.vn/api/suppliers/autocomplete?tearm=${encodeURIComponent(term)}`;
+    const result = await this.performKiotVietFetchWithRetry<any>(async (token) => {
+      return await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+          'Retailer': this.retailer as any,
+          'BranchId': this.LatestBranchId as any
+        }
+      });
+    });
+    return Array.isArray(result) ? result : (result?.Data || []);
+  }
+
+  /**
+   * Tạo phiếu nhập hàng trên KiotViet.
+   * POST /api/purchaseOrders — payload đã bọc sẵn { PurchaseOrder, Complete, ... }
+   */
+  async createPurchaseOrder(payload: any): Promise<any> {
+    const url = 'https://api-man1.kiotviet.vn/api/purchaseOrders';
+    return await this.performKiotVietFetchWithRetry<any>(async (token) => {
+      return await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+          'Retailer': this.retailer as any,
+          'BranchId': this.LatestBranchId as any
+        },
+        body: JSON.stringify(payload)
+      });
+    });
+  }
+}
+
+// ========= KiotViet Purchase Order Interfaces =========
+
+/** Item trả về từ /api/products/autocomplete (Type=1) — đủ field để build PurchaseOrderDetails */
+export interface KiotVietPurchaseProduct {
+  Id: number;
+  Name: string;          // "Kẹo gừng cứng 200g (gói)" — tên kèm đơn vị
+  ProductName: string;   // Tên hàng thuần
+  Unit: string;
+  Code: string;
+  BasePrice: number;
+  OnHand: number;
+  OnOrder: number;
+  Cost: number;
+  LatestPurchasePrice: number;
+  Reserved: number;
+  ActualReserved: number;
+  IsLotSerialControl: boolean;
+  IsBatchExpireControl?: boolean;
+  ConversionValue: number;
+  Image?: string;
+  HasVariants: boolean;
+  ListProductUnit: { Id: number; Unit: string; Code: string; Conversion: number; MasterUnitId: number }[];
+}
+
+export interface KiotVietSupplier {
+  Id: number;
+  Name: string;
+  Code?: string;
+  Phone?: string;
+  Address?: string;
+  [key: string]: any;
 }
 
 // ========= KiotViet Suggest Product Interface =========

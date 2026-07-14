@@ -1,0 +1,129 @@
+<div class="po-dialog">
+  <div class="po-header">
+    <h2>
+      <mat-icon>local_shipping</mat-icon>
+      KiotViet Nhập hàng
+    </h2>
+    <button mat-icon-button (click)="dialogRef.close()" [disabled]="isSubmitting">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="po-import">
+    <button mat-raised-button color="primary" (click)="fileInput.click()" [disabled]="isParsing || isSubmitting">
+      <mat-icon>upload_file</mat-icon>
+      Import hóa đơn XML
+    </button>
+    <input #fileInput type="file" accept=".xml" hidden (change)="onFileSelected($event)" />
+
+    <button mat-stroked-button *ngIf="lines.length" (click)="openMatchReview()" [disabled]="isSubmitting">
+      <mat-icon>fact_check</mat-icon>
+      Kiểm tra sản phẩm
+      <span *ngIf="reviewCount > 0"> ({{ reviewCount }})</span>
+    </button>
+
+    <span class="po-file" *ngIf="fileName">{{ fileName }}</span>
+    <mat-spinner *ngIf="isParsing" diameter="22"></mat-spinner>
+  </div>
+
+  <div class="po-info" *ngIf="lines.length">
+    <div class="po-info-item">
+      <label>Nhà cung cấp</label>
+      <span [class.po-warn]="!supplier">
+        {{ supplier?.Name || (sellerName ? sellerName + ' (chưa khớp NCC trên KiotViet)' : 'Không có') }}
+      </span>
+    </div>
+    <mat-form-field appearance="outline" class="po-invoice-no">
+      <mat-label>Số hóa đơn đầu vào</mat-label>
+      <input matInput [(ngModel)]="invoiceNumber" />
+    </mat-form-field>
+  </div>
+
+  <div class="po-error" *ngIf="submitError">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ submitError }}</span>
+  </div>
+
+  <div class="po-table-wrap" *ngIf="lines.length; else emptyState">
+    <table class="po-table">
+      <thead>
+        <tr>
+          <th class="c-stt">STT</th>
+          <th class="c-code">Mã hàng</th>
+          <th class="c-name">Tên hàng</th>
+          <th class="c-unit">ĐVT</th>
+          <th class="c-num">Số lượng</th>
+          <th class="c-num">Đơn giá</th>
+          <th class="c-num">Giảm giá</th>
+          <th class="c-num">Thành tiền</th>
+          <th class="c-act"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let line of lines; let i = index" [class.po-row-unmatched]="!line.product">
+          <td class="c-stt">{{ line.stt }}</td>
+          <td class="c-code">
+            <span *ngIf="line.product">{{ line.product.Code }}</span>
+            <button *ngIf="!line.product" mat-button class="po-match-btn" (click)="openMatchReview(i)"
+                    matTooltip="Chọn sản phẩm KiotViet cho dòng này">
+              <mat-icon>search</mat-icon> Chọn SP
+            </button>
+          </td>
+          <td class="c-name">
+            <div class="po-xml-name">{{ line.xmlName }}</div>
+            <div class="po-kv-name" *ngIf="line.product">
+              <mat-icon class="po-ok">check_circle</mat-icon>
+              {{ line.product.ProductName }} ({{ line.product.Unit }})
+              <span class="po-score" *ngIf="matchPercent(line) < 100">{{ matchPercent(line) }}%</span>
+              <button mat-icon-button class="po-change" (click)="openMatchReview(i)" matTooltip="Đổi sản phẩm">
+                <mat-icon>edit</mat-icon>
+              </button>
+            </div>
+            <div class="po-kv-name po-warn" *ngIf="!line.product && !line.searching">Chưa khớp sản phẩm KiotViet</div>
+            <div class="po-kv-name" *ngIf="line.searching">Đang tìm...</div>
+          </td>
+          <td class="c-unit">{{ line.unit }}</td>
+          <td class="c-num">
+            <input type="number" [(ngModel)]="line.quantity" (ngModelChange)="recalcLine(line)" />
+          </td>
+          <td class="c-num">
+            <input type="number" [(ngModel)]="line.unitPrice" (ngModelChange)="recalcLine(line)" />
+          </td>
+          <td class="c-num">
+            <input type="number" [(ngModel)]="line.discount" (ngModelChange)="recalcLine(line)" />
+          </td>
+          <td class="c-num po-amount">{{ line.amount | number:'1.0-0' }}</td>
+          <td class="c-act">
+            <button mat-icon-button (click)="removeLine(i)" matTooltip="Xóa dòng">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="po-empty">
+      <mat-icon>receipt_long</mat-icon>
+      <p>Import file XML hóa đơn để tạo phiếu nhập hàng trên KiotViet</p>
+    </div>
+  </ng-template>
+
+  <div class="po-footer" *ngIf="lines.length">
+    <div class="po-summary">
+      <div><span>Tổng số lượng:</span> <b>{{ totalQuantity | number:'1.0-0' }}</b></div>
+      <div><span>Tổng tiền hàng:</span> <b class="po-total">{{ total | number:'1.0-0' }}</b></div>
+      <div class="po-warn" *ngIf="unmatchedCount > 0">Còn {{ unmatchedCount }} dòng chưa khớp sản phẩm</div>
+    </div>
+    <div class="po-actions">
+      <button mat-raised-button class="po-draft" (click)="saveDraft()" [disabled]="!canSubmit">
+        <mat-icon>save</mat-icon> Lưu tạm
+      </button>
+      <button mat-raised-button color="primary" (click)="complete()" [disabled]="!canSubmit">
+        <mat-icon>check</mat-icon> Hoàn thành
+      </button>
+      <mat-spinner *ngIf="isSubmitting" diameter="22"></mat-spinner>
+    </div>
+  </div>
+</div>

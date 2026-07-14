@@ -327,3 +327,19 @@ Project sử dụng Angular 20 Standalone Components (không dùng NgModules tru
 Cột "Thao tác" (desktop) gom các nút vào 1 icon (`more_horiz`); hover xổ ra flyout danh sách nút (CSS `.action-hover-wrapper` / `.action-flyout`). iPad vẫn dùng mat-menu.
 - **In mã vạch** — `onPrintBarcodeClick()` → `printBarcode()`: prompt số lượng (mặc định = tồn kho), mở window in tem bằng JsBarcode (CDN). Khớp format KiotViet `PrintBarCode2Label`/`Base2Label`: **trang tem 72×22mm chứa 2 tem (36mm/tem)**, CODE128 encode Mã hàng, nội dung Tên → barcode → mã số → giá + "VND".
 - Các nút khác: Sync (KV), Clone (KV), Edit/History (Clone), Bỏ khỏi danh sách, Xóa.
+
+---
+
+## Edit Product Page - KiotViet Nhập hàng (XML → phiếu nhập)
+
+Nút toolbar **"Kiotviet Nhập hàng"** (`openKiotVietPurchaseOrder()`) → `KiotVietPurchaseOrderDialogComponent` (`components/edit-product-page/kiotviet-purchase-order-dialog/`). Mục đích: tạo phiếu nhập tự động thay vì gõ tay trên web KiotViet. **Giống hệt bản TapHoa39BanHang.**
+
+**Flow:** Import XML hóa đơn → BE `/v1/parse-xml` → auto-match SP + NCC qua KiotViet autocomplete → review candidate → bảng data → `POST /api/purchaseOrders`.
+
+**Bảng:** STT | Mã hàng | Tên hàng | ĐVT | Số lượng | Đơn giá | Giảm giá | Thành tiền (SL/ĐG/CK sửa được, `Thành tiền = SL × ĐG − CK`).
+
+**Match SP:** auto-nhận CHỈ khi tên trùng 100%; còn lại mở `PurchaseMatchReviewDialogComponent` cho user chọn candidate (có % giống, ô tìm thủ công trên KiotViet, option bỏ qua dòng).
+
+**2 nút submit:** "Lưu tạm" (`Complete: false`) / "Hoàn thành" (`Complete: true`) — chỉ khác field `Complete` của payload; disable khi còn dòng chưa khớp SP. Lỗi KiotViet (`ResponseStatus.Message`) hiện banner đỏ, dialog giữ nguyên dữ liệu để gửi lại.
+
+**Services:** `KiotVietPurchaseOrderService` (`services/kiotviet-purchase-order.service.ts`) + 3 method mới trong `KiotvietService`: `autocompletePurchaseProducts()`, `autocompleteSuppliers()`, `createPurchaseOrder()`.

@@ -145,6 +145,28 @@ mat-toolbar {
     background: linear-gradient(135deg, #651fff, #304ffe) !important;
 }
 
+.kv-purchase-button {
+    background: linear-gradient(135deg, #0288d1, #01579b) !important;
+    color: white !important;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    margin-left: 10px;
+    font-size: 16px;
+    box-shadow: 10px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.kv-purchase-button:hover {
+    background: linear-gradient(135deg, #039be5, #0277bd) !important;
+    transform: scale(1.05);
+}
+
+.kv-purchase-button:active {
+    background: linear-gradient(135deg, #01579b, #013a68) !important;
+    transform: scale(0.9);
+}
+
 .add-product-button {
     /* Float the add button at the bottom-right corner of the viewport
        so it stays near the screen edge regardless of container layout. */
@@ -226,6 +248,7 @@ mat-toolbar {
     .toolbar .add-product-button,
     .toolbar .add-original-button,
     .toolbar .invoice-ai-button,
+    .toolbar .kv-purchase-button,
     .toolbar .clear-cache-button,
     .toolbar .promotion-button,
     .toolbar .reload-button {
@@ -255,6 +278,7 @@ mat-toolbar {
     .toolbar .add-product-button .mat-mdc-button-touch-target,
     .toolbar .add-original-button .mat-mdc-button-touch-target,
     .toolbar .invoice-ai-button .mat-mdc-button-touch-target,
+    .toolbar .kv-purchase-button .mat-mdc-button-touch-target,
     .toolbar .clear-cache-button .mat-mdc-button-touch-target,
     .toolbar .promotion-button .mat-mdc-button-touch-target,
     .toolbar .reload-button .mat-mdc-button-touch-target {
@@ -267,6 +291,7 @@ mat-toolbar {
     .toolbar .add-product-button mat-icon,
     .toolbar .add-original-button mat-icon,
     .toolbar .invoice-ai-button mat-icon,
+    .toolbar .kv-purchase-button mat-icon,
     .toolbar .clear-cache-button mat-icon,
     .toolbar .promotion-button mat-icon,
     .toolbar .reload-button mat-icon {
@@ -281,6 +306,7 @@ mat-toolbar {
     .toolbar .add-product-button:hover,
     .toolbar .add-original-button:hover,
     .toolbar .invoice-ai-button:hover,
+    .toolbar .kv-purchase-button:hover,
     .toolbar .clear-cache-button:hover,
     .toolbar .promotion-button:hover,
     .toolbar .reload-button:hover {

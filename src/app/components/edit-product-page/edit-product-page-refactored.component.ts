@@ -27,6 +27,7 @@ import { InvoicePriceUpdateService } from './invoice-processing-page/invoice-pri
 import { ProductHistoryService } from '../../services/product-history.service';
 import { PromotionListDialogComponent } from './promotion-list-dialog/promotion-list-dialog.component';
 import { ProductQueryDialogComponent } from './product-query-dialog/product-query-dialog.component';
+import { KiotVietPurchaseOrderDialogComponent } from './kiotviet-purchase-order-dialog/kiotviet-purchase-order-dialog.component';
 import { CrossTabSyncService, ProductOnHandUpdate } from '../../services/cross-tab-sync.service';
 import { GroupService } from '../../services/group.service';
 import { IndexedDBService } from '../../services/indexed-db.service';
@@ -883,6 +884,28 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     this.dialog.open(PromotionListDialogComponent, {
       width: '900px',
       maxHeight: '85vh',
+    });
+  }
+
+  /**
+   * Mở dialog nhập hàng KiotViet: import XML hóa đơn → tạo phiếu nhập (Lưu tạm / Hoàn thành).
+   */
+  openKiotVietPurchaseOrder() {
+    const dialogRef = this.dialog.open(KiotVietPurchaseOrderDialogComponent, {
+      width: '1200px',
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result?.created) {
+        const label = result.complete ? 'Hoàn thành' : 'Lưu tạm';
+        this.snackBar.open(
+          `Đã tạo phiếu nhập ${result.purchaseOrder?.Code || ''} (${label})`,
+          'Đóng',
+          { duration: 4000 }
+        );
+      }
     });
   }
 
