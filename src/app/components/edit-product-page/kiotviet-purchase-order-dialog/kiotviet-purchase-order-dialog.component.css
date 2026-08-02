@@ -32,6 +32,28 @@
   color: #555;
 }
 
+.po-new {
+  color: #e65100;
+}
+
+.po-cache-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #fff8e1;
+  color: #f57f17;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.po-cache-badge mat-icon {
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+
 .po-info {
   display: flex;
   align-items: center;

@@ -8,6 +8,7 @@ import { VietnameseService } from '../services/vietnamese.service';
 import { KiotvietService, KiotVietSuggestProduct } from '../services/kiotviet.service';
 import { FirebaseService } from '../services/firebase.service';
 import { IndexedDBService } from './indexed-db.service';
+import { SALES_DB_NAME, SALES_DB_VERSION, salesDBUpgrade } from './sales-db.config';
 import { FirestoreRealtimeService, ProductRealtimeUpdate as FirestoreProductUpdate } from './firestore-realtime.service';
 import { WebSocketRealtimeService, ProductWebSocketUpdate } from './websocket-realtime.service';
 import { Observable, Subscription } from 'rxjs';
@@ -31,9 +32,9 @@ type ProductRealtimeUpdate = {
   providedIn: 'root'
 })
 export class ProductService {
-  private dbName = 'SalesDB';
+  private dbName = SALES_DB_NAME;
   private orderDBName = 'Orders';
-  private dbVersion = 6;
+  private dbVersion = SALES_DB_VERSION;
   private storeName = 'products';
 
   // Cache mechanism để tránh gọi API trùng lặp
@@ -175,21 +176,10 @@ export class ProductService {
     try {
       console.log('🔄 Khởi tạo ProductService IndexedDB...');
 
-      // Prepare upgrade function so we can reuse it if we need to bump version to create missing stores
-      const upgradeFn = (db: any) => {
-        console.log(`📦 Đang tạo object store '${this.storeName}' cho database '${this.dbName}' v${this.dbVersion}`);
-
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          const store = db.createObjectStore(this.storeName, { keyPath: 'Id' });
-          store.createIndex('Name', 'Name', { unique: false });
-          store.createIndex('MasterProductId', 'MasterProductId', { unique: false });
-          store.createIndex('Code', 'Code', { unique: false });
-        } else {
-          console.log(`ℹ️ Object store '${this.storeName}' đã tồn tại`);
-        }
-
-
-      };
+      // Use the centralized upgrade so a version bump creates EVERY SalesDB store.
+      // A partial upgrade (products only) would leave the other stores missing and
+      // make initSalesDB() bump the version again on the next boot, forever.
+      const upgradeFn = salesDBUpgrade;
 
       // Try opening with the configured version first
       await this.indexedDBService.getDB(this.dbName, this.dbVersion, upgradeFn);

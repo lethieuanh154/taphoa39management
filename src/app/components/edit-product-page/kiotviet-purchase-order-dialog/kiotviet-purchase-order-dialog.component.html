@@ -22,7 +22,16 @@
       <span *ngIf="reviewCount > 0"> ({{ reviewCount }})</span>
     </button>
 
+    <button mat-stroked-button class="po-new" *ngIf="lines.length" (click)="clearDraft()"
+            [disabled]="isSubmitting" matTooltip="Xóa dữ liệu hiện tại để nhập hóa đơn mới">
+      <mat-icon>restart_alt</mat-icon>
+      Nhập mới
+    </button>
+
     <span class="po-file" *ngIf="fileName">{{ fileName }}</span>
+    <span class="po-cache-badge" *ngIf="restoredFromCache">
+      <mat-icon>history</mat-icon> Khôi phục từ lần trước
+    </span>
     <mat-spinner *ngIf="isParsing" diameter="22"></mat-spinner>
   </div>
 
@@ -35,7 +44,7 @@
     </div>
     <mat-form-field appearance="outline" class="po-invoice-no">
       <mat-label>Số hóa đơn đầu vào</mat-label>
-      <input matInput [(ngModel)]="invoiceNumber" />
+      <input matInput [(ngModel)]="invoiceNumber" (ngModelChange)="onInvoiceNumberChange()" />
     </mat-form-field>
   </div>
 

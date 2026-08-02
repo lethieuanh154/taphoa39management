@@ -126,6 +126,51 @@
   background: #f8fafc;
 }
 
+/* Unauthenticated: sidebar is hidden, let the page (login) own the full area */
+.management-layout.no-sidebar {
+  .content {
+    background: transparent;
+    padding: 0;
+  }
+}
+
+/* Session expiry notice */
+.session-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fef3c7;
+  border-bottom: 1px solid #fcd34d;
+  color: #78350f;
+  font-size: 14px;
+
+  .session-banner-text {
+    flex: 1;
+  }
+
+  .session-banner-action {
+    background: #b45309;
+    border: none;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    &:hover { background: #92400e; }
+  }
+
+  .session-banner-close {
+    background: none;
+    border: none;
+    color: #92400e;
+    cursor: pointer;
+    padding: 4px 6px;
+    &:hover { color: #451a03; }
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .management-layout {

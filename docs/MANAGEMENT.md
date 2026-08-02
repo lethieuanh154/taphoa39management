@@ -162,6 +162,21 @@ src/app/
 - 401 → auto-refresh token + retry request
 - 403 → validate + refresh token
 
+### Mất session không được phá trang đang mở
+`app.component.html` dùng **một `<router-outlet>` duy nhất**, KHÔNG bọc trong `*ngIf="auth.isAuthenticated"`.
+Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → mỗi lần `authState` đổi là component đang hiển thị bị destroy/recreate, mất sạch state trong RAM (rõ nhất ở `/edit-products`: danh sách sản phẩm biến mất). Nay chỉ sidebar + chat-bubble bị toggle; việc điều hướng user chưa đăng nhập do `authGuard` lo.
+
+- `AuthService.clearSession()` (private): xoá token local + `signOut` + phát `authState`, KHÔNG gọi `/api/auth/logout`.
+- `AuthService.logout()` (public): revoke refresh token trên server rồi mới `clearSession()`.
+- `_doRefresh` gặp 401 → `clearSession()` + `TokenExpiredService.emitTokenExpired('refresh')` (không revoke lại token đã invalid).
+- `onAuthStateChanged` mất session đã thiết lập mà không phải do user bấm Đăng xuất → `emitTokenExpired('firebase')`. Cờ `suppressExpiryNotice` chặn báo nhầm khi logout chủ động.
+- `app.component.html` render **session banner** từ `TokenExpiredService.showExpiredDialog$` / `expiredMessage$` (nút "Đăng nhập lại" + đóng). Trước đó `emitTokenExpired()` không có UI nào → user bị đá về login không lời giải thích.
+
+### Khôi phục state trang Edit Product
+`edit-product-page-refactored.component.ts` snapshot `productGroups` / `searchTerm` / `activeQuery` / `pendingCloneSave` / `productColors` vào **sessionStorage** key `edit_product_page_state` (per-tab), khôi phục ở cuối `ngOnInit`. Giúp sống sót qua component re-create (auth flip, Chrome tab discard, reload).
+
+`cleanOldEditingData()` KHÔNG còn xoá toàn bộ `editing_childProduct_*` — localStorage dùng chung giữa các tab nên xoá hết sẽ mất dữ liệu đang chờ lưu của tab khác. Nay dùng TTL 12h, theo dõi qua index `edit_page_editing_meta` (map key → thời điểm nhìn thấy lần đầu; key lạ được coi là mới).
+
 ---
 
 ## IndexedDB Schema
@@ -181,6 +196,26 @@ src/app/
 | Store | Key | Dữ liệu |
 |-------|-----|----------|
 | `order` | `id` | Đơn hàng |
+
+### SalesDB — version PHẢI lấy từ `sales-db.config.ts`
+
+`SALES_DB_NAME` / `SALES_DB_VERSION` / `salesDBUpgrade` là nguồn duy nhất. **Không hardcode** tên DB, số version, hay viết `upgradeFn` riêng.
+
+| Store | Key |
+|-------|-----|
+| `products` | `Id` |
+| `categories` | `Id` (index `Name`, `Path`) |
+| `categoriesMeta` | `key` |
+| `promotions` | `id` |
+| `invoiceDrafts` | `sessionId` |
+| `invoiceProductMappings` | `id` (index `supplierTaxCode`) |
+
+Trước đây SalesDB bị mở với 4 version khác nhau (7 / 6 / 3 / hardcode). Chưa vỡ chỉ vì `getDB()` cache connection **theo `dbName`, không theo version**, và `initSalesDB()` chạy ở `APP_INITIALIZER` nên mọi lời gọi sau đều hit cache và bỏ qua tham số version. Nay đã đồng bộ hết về `SALES_DB_VERSION`.
+
+**Bẫy:** `ProductService.initDB()` fallback bằng `dbVersion + 1` khi thiếu store. Nếu `upgradeFn` chỉ tạo `products`, DB mới sẽ thiếu 5 store còn lại → `initSalesDB()` bump version lại ở lần boot sau → vòng lặp bump vô hạn. Vì vậy mọi upgrade SalesDB **bắt buộc** dùng `salesDBUpgrade`.
+
+### Chống treo khi upgrade IndexedDB bị chặn
+`IndexedDBService.getDB()` mở có version giờ có timeout `OPEN_TIMEOUT_MS = 10s` (`withOpenTimeout`). Một upgrade bị tab khác chặn thì `openDB` **không bao giờ settle** → trước đây treo mọi caller và kẹt spinner vĩnh viễn. Khi timeout/blocked, `openOrFallback()` mở lại theo version đang có trên đĩa để đọc/ghi vẫn chạy với các store hiện tại.
 
 ---
 
@@ -338,8 +373,10 @@ Nút toolbar **"Kiotviet Nhập hàng"** (`openKiotVietPurchaseOrder()`) → `Ki
 
 **Bảng:** STT | Mã hàng | Tên hàng | ĐVT | Số lượng | Đơn giá | Giảm giá | Thành tiền (SL/ĐG/CK sửa được, `Thành tiền = SL × ĐG − CK`).
 
-**Match SP:** auto-nhận CHỈ khi tên trùng 100%; còn lại mở `PurchaseMatchReviewDialogComponent` cho user chọn candidate (có % giống, ô tìm thủ công trên KiotViet, option bỏ qua dòng).
+**Match SP (theo tên + ĐƠN VỊ):** autocomplete KiotViet trả mỗi đơn vị 1 row cùng tên → `pickBestMatch` ưu tiên row khớp ĐVT hóa đơn (tránh nhập nhầm đơn vị gốc, vd "thùng" → "ly"). Auto-nhận khi tên trùng 100% VÀ đúng đơn vị, HOẶC trùng lựa chọn user đã ghi nhớ (localStorage `kvPurchaseOrderMatches`, key = tên+đơn-vị); còn lại mở `PurchaseMatchReviewDialogComponent` (candidate hiện tag đơn vị, cảnh báo khi chọn sai đơn vị, % giống tô màu, ô tìm thủ công, option bỏ qua). Lựa chọn user lưu localStorage → lần import sau tự khôi phục.
 
 **2 nút submit:** "Lưu tạm" (`Complete: false`) / "Hoàn thành" (`Complete: true`) — chỉ khác field `Complete` của payload; disable khi còn dòng chưa khớp SP. Lỗi KiotViet (`ResponseStatus.Message`) hiện banner đỏ, dialog giữ nguyên dữ liệu để gửi lại.
+
+**Cache nháp (localStorage `kvPurchaseOrderDraft`):** state sau import (lines + SP + NCC + số HĐ) lưu tự động → đóng/mở lại dialog tự khôi phục (badge "Khôi phục từ lần trước"), không cần import lại. Nút "Nhập mới" xóa nháp; tạo phiếu thành công tự xóa. Fetch KiotViet có retry lỗi mạng (3 lần, backoff) + chặn import chồng nhau.
 
 **Services:** `KiotVietPurchaseOrderService` (`services/kiotviet-purchase-order.service.ts`) + 3 method mới trong `KiotvietService`: `autocompletePurchaseProducts()`, `autocompleteSuppliers()`, `createPurchaseOrder()`.

@@ -11,6 +11,7 @@ import {
 } from '@angular/fire/auth';
 import { BehaviorSubject } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { TokenExpiredService } from './token-expired.service';
 
 export interface AuthState {
   user: User | null;
@@ -40,6 +41,7 @@ export interface LoginResponse {
 export class AuthService {
   private auth = inject(Auth);
   private platformId = inject(PLATFORM_ID);
+  private tokenExpiredService = inject(TokenExpiredService);
 
   private authState = new BehaviorSubject<AuthState>({
     user: null,
@@ -66,6 +68,10 @@ export class AuthService {
   // Firebase ID token cache (gui qua header X-Id-Token cho backend admin-auth)
   private currentIdToken: string | null = null;
 
+  // Set while an intentional sign-out is in flight, so the auth listener
+  // doesn't show a "session expired" notice for it.
+  private suppressExpiryNotice = false;
+
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.initAuthListener();
@@ -86,6 +92,8 @@ export class AuthService {
 
   private initAuthListener(): void {
     onAuthStateChanged(this.auth, async (user) => {
+      const wasAuthenticated = this.authState.value.isAuthenticated;
+
       if (user) {
         const hasRefreshToken = this.getRefreshToken();
         this.authState.next({
@@ -103,6 +111,13 @@ export class AuthService {
           isAuthenticated: false,
           isLoading: false
         });
+      }
+
+      // Losing an established session without an explicit logout means the
+      // session was dropped underneath the user — surface it instead of
+      // silently blanking the UI.
+      if (wasAuthenticated && !this.authState.value.isAuthenticated && !this.suppressExpiryNotice) {
+        this.tokenExpiredService.emitTokenExpired('firebase');
       }
     });
   }
@@ -162,6 +177,9 @@ export class AuthService {
 
       // Store tokens
       this.storeTokens(loginData);
+
+      // Clear any leftover "session expired" notice from the previous session
+      this.tokenExpiredService.reset();
 
       // Update auth state
       this.authState.next({
@@ -227,8 +245,17 @@ export class AuthService {
 
       if (!response.ok) {
         if (response.status === 401) {
-          console.error('❌ [AuthService] Refresh token invalid, logging out');
-          await this.logout();
+          // Refresh token is already invalid server-side — revoking it again is
+          // pointless. Clear the local session and TELL the user instead of
+          // silently dropping them, so unsaved work isn't lost without warning.
+          console.error('❌ [AuthService] Refresh token invalid, clearing session');
+          this.suppressExpiryNotice = true;
+          try {
+            await this.clearSession();
+          } finally {
+            this.suppressExpiryNotice = false;
+          }
+          this.tokenExpiredService.emitTokenExpired('refresh');
           return false;
         }
         console.warn(`⚠️ [AuthService] Refresh failed with status ${response.status}`);
@@ -307,6 +334,7 @@ export class AuthService {
 
   async logout(): Promise<void> {
     this.stopTokenRefreshInterval();
+    this.suppressExpiryNotice = true;
 
     const refreshToken = this.getRefreshToken();
 
@@ -321,6 +349,21 @@ export class AuthService {
         console.error('Error revoking token:', error);
       }
     }
+
+    try {
+      await this.clearSession();
+    } finally {
+      this.suppressExpiryNotice = false;
+    }
+  }
+
+  /**
+   * Drop the local session (tokens + Firebase sign-out + auth state).
+   * Does NOT call /api/auth/logout — use logout() when the refresh token
+   * still needs to be revoked server-side.
+   */
+  private async clearSession(): Promise<void> {
+    this.stopTokenRefreshInterval();
 
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem(this.REFRESH_TOKEN_KEY);

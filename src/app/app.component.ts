@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './services/auth.service';
+import { TokenExpiredService } from './services/token-expired.service';
 import { ChatBubbleComponent } from './components/chat-bubble/chat-bubble.component';
 
 @Component({
@@ -15,12 +16,23 @@ export class AppComponent {
   sidebarCollapsed = false;
 
   private authService = inject(AuthService);
+  private tokenExpiredService = inject(TokenExpiredService);
   private router = inject(Router);
 
   authState$ = this.authService.authState$;
+  sessionExpired$ = this.tokenExpiredService.showExpiredDialog$;
+  sessionMessage$ = this.tokenExpiredService.expiredMessage$;
 
   toggleSidebar() {
     this.sidebarCollapsed = !this.sidebarCollapsed;
+  }
+
+  relogin() {
+    this.tokenExpiredService.redirectToLogin(true);
+  }
+
+  dismissSessionBanner() {
+    this.tokenExpiredService.dismissDialog();
   }
 
   async logout() {

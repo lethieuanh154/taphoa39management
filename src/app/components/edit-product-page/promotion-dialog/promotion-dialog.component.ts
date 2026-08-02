@@ -22,6 +22,7 @@ import { Promotion, GiftEntry } from '../../../models/promotion.model';
 import { PromotionService } from '../../../services/promotion.service';
 import { environment } from '../../../../environments/environment';
 import { IndexedDBService } from '../../../services/indexed-db.service';
+import { SALES_DB_NAME, SALES_DB_VERSION } from '../../../services/sales-db.config';
 
 export interface PromotionDialogData {
   mode: 'create' | 'edit';
@@ -102,8 +103,8 @@ export class PromotionDialogComponent implements OnInit {
   private regularProducts: ProductOption[] = [];
   private kmProducts: ProductOption[] = [];
 
-  private dbName = 'SalesDB';
-  private dbVersion = 6;
+  private dbName = SALES_DB_NAME;
+  private dbVersion = SALES_DB_VERSION;
   private storeName = 'products';
 
   constructor(

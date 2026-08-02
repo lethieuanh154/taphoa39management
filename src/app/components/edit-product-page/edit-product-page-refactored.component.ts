@@ -31,6 +31,7 @@ import { KiotVietPurchaseOrderDialogComponent } from './kiotviet-purchase-order-
 import { CrossTabSyncService, ProductOnHandUpdate } from '../../services/cross-tab-sync.service';
 import { GroupService } from '../../services/group.service';
 import { IndexedDBService } from '../../services/indexed-db.service';
+import { SALES_DB_NAME, SALES_DB_VERSION } from '../../services/sales-db.config';
 import { Product } from '../../models/product.model';
 
 interface IWindow extends Window {
@@ -102,6 +103,14 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
   // Active advanced-query filter (shown as a chip next to the Query button)
   activeQuery: { conditions: QueryCondition[]; limit: number } | null = null;
 
+  // Per-tab snapshot of the displayed list, so a component re-create
+  // (auth state flip, Chrome tab discard, reload) doesn't wipe the results.
+  private readonly STATE_KEY = 'edit_product_page_state';
+
+  // Index of first-seen timestamps for editing_childProduct_* keys (TTL cleanup)
+  private readonly EDIT_META_KEY = 'edit_page_editing_meta';
+  private readonly EDIT_TTL_MS = 12 * 60 * 60 * 1000;
+
   constructor(
     public dialog: MatDialog,
     private ngZone: NgZone,
@@ -156,28 +165,102 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     this.setupConnectivityHint();
     this.setupInvoiceEmailListener();
     this.setupCrossTabSync();
+
+    // Restore the displayed list last, after searchControl wiring is in place
+    this.restoreState();
+  }
+
+  /**
+   * Restore the displayed product list from sessionStorage.
+   * sessionStorage is per-tab, so this survives a component re-create
+   * without leaking state between browser tabs.
+   */
+  private restoreState(): void {
+    try {
+      const raw = sessionStorage.getItem(this.STATE_KEY);
+      if (!raw) return;
+
+      const state = JSON.parse(raw);
+      if (!Array.isArray(state?.productGroups) || state.productGroups.length === 0) return;
+
+      this.productGroups = state.productGroups;
+      this.searchTerm = state.searchTerm || '';
+      this.activeQuery = state.activeQuery || null;
+      this.pendingCloneSave = !!state.pendingCloneSave;
+      this.productColors = state.productColors || {};
+
+      if (this.searchTerm) {
+        this.searchControl.setValue(this.searchTerm, { emitEvent: false });
+      }
+
+      console.log(`♻️ Khôi phục ${this.productGroups.length} nhóm sản phẩm từ sessionStorage`);
+    } catch (error) {
+      console.warn('Không khôi phục được state trang:', error);
+    }
+  }
+
+  /**
+   * Snapshot the displayed list to sessionStorage.
+   * Called after every mutation of productGroups.
+   */
+  private persistState(): void {
+    try {
+      if (this.productGroups.length === 0) {
+        sessionStorage.removeItem(this.STATE_KEY);
+        return;
+      }
+
+      sessionStorage.setItem(this.STATE_KEY, JSON.stringify({
+        productGroups: this.productGroups,
+        searchTerm: this.searchTerm,
+        activeQuery: this.activeQuery,
+        pendingCloneSave: this.pendingCloneSave,
+        productColors: this.productColors,
+        savedAt: Date.now()
+      }));
+    } catch (error) {
+      // Quota exceeded or circular data - drop the snapshot rather than break the page
+      console.warn('Không lưu được state trang:', error);
+      try { sessionStorage.removeItem(this.STATE_KEY); } catch { /* ignore */ }
+    }
   }
 
   /**
    * Clean up old editing data from localStorage
    * This prevents localStorage from growing indefinitely
+   *
+   * IMPORTANT: localStorage is shared by every browser tab of this app.
+   * Wiping ALL editing_childProduct_* on init destroyed pending clone/price
+   * data belonging to another tab. Now only entries older than EDIT_TTL_MS
+   * are removed, tracked via a first-seen index.
    */
   private cleanOldEditingData() {
     try {
-      const keysToCheck: string[] = [];
       const keysToRemove: string[] = [];
+      const now = Date.now();
 
-      // Get all localStorage keys
+      let meta: Record<string, number> = {};
+      try {
+        meta = JSON.parse(localStorage.getItem(this.EDIT_META_KEY) || '{}') || {};
+      } catch {
+        meta = {};
+      }
+      const nextMeta: Record<string, number> = {};
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('editing_childProduct_')) {
-          keysToCheck.push(key);
+        if (!key?.startsWith('editing_childProduct_')) continue;
+
+        // Keys never seen before are treated as fresh (just written, possibly by another tab)
+        const firstSeen = meta[key] ?? now;
+        if (now - firstSeen > this.EDIT_TTL_MS) {
+          keysToRemove.push(key);
+        } else {
+          nextMeta[key] = firstSeen;
         }
       }
 
-      // Remove editing_childProduct_* data that's older than current session
-      // Strategy: Remove ALL editing data on component init, forcing fresh start
-      keysToRemove.push(...keysToCheck);
+      localStorage.setItem(this.EDIT_META_KEY, JSON.stringify(nextMeta));
 
       // Also clean up old search/grouped data if too many entries
       const searchKeys = Object.keys(localStorage).filter(k => k.startsWith('search_'));
@@ -234,6 +317,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.persistState();
     this.connectivitySubscriptions.unsubscribe();
     this.crossTabSubscription?.unsubscribe();
     this.stopBarcodeScan();
@@ -318,6 +402,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       this.productGroups = [];
     } finally {
       this.isLoading = false;
+      this.persistState();
     }
   }
 
@@ -355,6 +440,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
     if (!this.searchTerm) {
       this.productGroups = [];
+      this.persistState();
       return;
     }
 
@@ -375,6 +461,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       this.productGroups = [];
     } finally {
       this.isLoading = false;
+      this.persistState();
     }
   }
 
@@ -561,11 +648,13 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
   onProductChange(updatedProduct: EditedProduct, groupIndex: number) {
     this.productGroups[groupIndex].master = updatedProduct;
     this.saveToLocalStorage(updatedProduct);
+    this.persistState();
   }
 
   onChildrenChange(updatedChildren: EditedProduct[], groupIndex: number) {
     this.productGroups[groupIndex].children = updatedChildren;
     updatedChildren.forEach(child => this.saveToLocalStorage(child));
+    this.persistState();
   }
 
   /**
@@ -632,6 +721,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
         ...this.productGroups.slice(0, groupIndex),
         ...this.productGroups.slice(groupIndex + 1)
       ];
+      this.persistState();
 
       // 4. Show success notification
       const deletedCount = productIds.length;
@@ -711,11 +801,15 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
     try {
       this.productEditService.clearCache();
+      localStorage.removeItem(this.EDIT_META_KEY);
 
       // Also clear current editing session
       this.productGroups = [];
       this.searchTerm = '';
+      this.activeQuery = null;
+      this.pendingCloneSave = false;
       this.searchControl.setValue('');
+      this.persistState();
 
       console.log('✅ All cache cleared successfully');
     } catch (error) {
@@ -816,9 +910,9 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       console.log(`📦 Merged: ${mergedProducts.length} products`);
 
       // 6. Clear + Save IndexedDB
-      await this.indexedDBService.clear('SalesDB', 7, 'products');
-      await this.indexedDBService.putMany('SalesDB', 7, 'products', mergedProducts);
-      const savedCount = await this.indexedDBService.count('SalesDB', 7, 'products');
+      await this.indexedDBService.clear(SALES_DB_NAME, SALES_DB_VERSION, 'products');
+      await this.indexedDBService.putMany(SALES_DB_NAME, SALES_DB_VERSION, 'products', mergedProducts);
+      const savedCount = await this.indexedDBService.count(SALES_DB_NAME, SALES_DB_VERSION, 'products');
       console.log(`✅ Đã lưu ${savedCount} products vào IndexedDB`);
 
       // 7. Cleanup orphaned
@@ -943,6 +1037,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
         this.productGroups = [];
       } finally {
         this.isLoading = false;
+        this.persistState();
       }
     });
   }
@@ -968,6 +1063,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     this.productGroups = [];
     this.searchTerm = '';
     this.searchControl.setValue('');
+    this.persistState();
   }
 
   openInvoiceProcessing() {
@@ -992,6 +1088,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
             if (key?.startsWith('editing_childProduct_')) keysToRemove.push(key);
           }
           keysToRemove.forEach(k => localStorage.removeItem(k));
+          localStorage.removeItem(this.EDIT_META_KEY);
           console.log(`[${label}] Cleared ${keysToRemove.length} stale editing_childProduct_ entries`);
 
           const updateResult = isCloneUpdate
@@ -1048,6 +1145,8 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
             this.applyCloneDataToProductGroups();
             this.pendingCloneSave = true;
           }
+
+          this.persistState();
 
           this.snackBar.open(
             isCloneUpdate ? 'Đã cập nhật Clone - Ấn nút Lưu để xác nhận!' : 'Đã cập nhật giá thành công!',
@@ -1344,6 +1443,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       }
 
       this.pendingCloneSave = false;
+      this.persistState();
       this.snackBar.open('Đã lưu Clone thành công!', 'Đóng', { duration: 3000 });
       console.log('Clone save complete!');
     } catch (err) {
@@ -1380,6 +1480,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       if (updated > 0) {
         // Trigger change detection by creating new array reference
         this.productGroups = [...this.productGroups];
+        this.persistState();
         console.log(`[CrossTab] Updated ${updated} products from another tab`);
       }
     });

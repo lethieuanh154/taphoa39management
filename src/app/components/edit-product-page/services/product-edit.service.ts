@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Product } from '../../../models/product.model';
 import { IndexedDBService } from '../../../services/indexed-db.service';
+import { SALES_DB_NAME, SALES_DB_VERSION } from '../../../services/sales-db.config';
 import { ProductService } from '../../../services/product.service';
 import { GroupService } from '../../../services/group.service';
 import { assignColorsToProductList } from '../utility-functions/app.color';
@@ -56,8 +57,8 @@ export interface QueryCondition {
   providedIn: 'root'
 })
 export class ProductEditService {
-  private dbName = 'SalesDB';
-  private dbVersion = 6;
+  private dbName = SALES_DB_NAME;
+  private dbVersion = SALES_DB_VERSION;
   private storeName = 'products';
 
   constructor(

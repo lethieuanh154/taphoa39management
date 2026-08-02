@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -40,7 +40,7 @@ import { log, logError } from '../../../utils/log.util';
   templateUrl: './kiotviet-purchase-order-dialog.component.html',
   styleUrls: ['./kiotviet-purchase-order-dialog.component.css']
 })
-export class KiotVietPurchaseOrderDialogComponent {
+export class KiotVietPurchaseOrderDialogComponent implements OnInit {
   lines: PurchaseLine[] = [];
   supplier: KiotVietSupplier | null = null;
   sellerName = '';
@@ -50,6 +50,10 @@ export class KiotVietPurchaseOrderDialogComponent {
   isParsing = false;
   isSubmitting = false;
   submitError = '';
+  restoredFromCache = false;
+
+  /** localStorage: lưu nháp phiếu nhập đã import để mở lại không cần import lại */
+  private readonly DRAFT_KEY = 'kvPurchaseOrderDraft';
 
   constructor(
     public dialogRef: MatDialogRef<KiotVietPurchaseOrderDialogComponent>,
@@ -58,6 +62,71 @@ export class KiotVietPurchaseOrderDialogComponent {
     private snackBar: MatSnackBar
   ) {}
 
+  ngOnInit(): void {
+    if (this.loadDraft()) {
+      this.restoredFromCache = true;
+      this.notify(`Đã khôi phục phiếu nhập từ lần trước (${this.lines.length} dòng)`);
+    }
+  }
+
+  // ============ Cache nháp (localStorage) ============
+
+  /** Lưu toàn bộ state hiện tại vào localStorage (bỏ cờ tạm `searching`) */
+  private cacheState(): void {
+    try {
+      if (!this.lines.length) {
+        localStorage.removeItem(this.DRAFT_KEY);
+        return;
+      }
+      const draft = {
+        fileName: this.fileName,
+        sellerName: this.sellerName,
+        invoiceNumber: this.invoiceNumber,
+        supplier: this.supplier,
+        lines: this.lines.map(l => ({ ...l, searching: false })),
+        savedAt: Date.now()
+      };
+      localStorage.setItem(this.DRAFT_KEY, JSON.stringify(draft));
+    } catch (error) {
+      logError('[KVPurchaseOrderDialog] cacheState error:', error);
+    }
+  }
+
+  private loadDraft(): boolean {
+    try {
+      const raw = localStorage.getItem(this.DRAFT_KEY);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      if (!draft?.lines?.length) return false;
+      this.fileName = draft.fileName || '';
+      this.sellerName = draft.sellerName || '';
+      this.invoiceNumber = draft.invoiceNumber || '';
+      this.supplier = draft.supplier || null;
+      this.lines = draft.lines;
+      return true;
+    } catch (error) {
+      logError('[KVPurchaseOrderDialog] loadDraft error:', error);
+      return false;
+    }
+  }
+
+  /** Xóa nháp + reset màn hình để nhập hóa đơn mới */
+  clearDraft(): void {
+    localStorage.removeItem(this.DRAFT_KEY);
+    this.lines = [];
+    this.supplier = null;
+    this.sellerName = '';
+    this.invoiceNumber = '';
+    this.fileName = '';
+    this.submitError = '';
+    this.restoredFromCache = false;
+  }
+
+  /** Ghi nhớ khi user sửa số hóa đơn */
+  onInvoiceNumberChange(): void {
+    this.cacheState();
+  }
+
   // ============ Import XML ============
 
   async onFileSelected(event: Event): Promise<void> {
@@ -65,6 +134,12 @@ export class KiotVietPurchaseOrderDialogComponent {
     const file = input.files?.[0];
     input.value = ''; // cho phép chọn lại cùng file
     if (!file) return;
+
+    // Chặn parse chồng nhau (bắn dồn nhiều fetch → KiotViet lỗi "Failed to fetch")
+    if (this.isParsing) {
+      this.notify('Đang xử lý file trước, vui lòng đợi...');
+      return;
+    }
 
     if (!file.name.toLowerCase().endsWith('.xml')) {
       this.notify('Vui lòng chọn file XML hóa đơn');
@@ -88,6 +163,9 @@ export class KiotVietPurchaseOrderDialogComponent {
           .then(s => (this.supplier = s))
       ]);
       this.isParsing = false;
+
+      this.restoredFromCache = false;
+      this.cacheState();
 
       // Dòng nào không khớp 100% → mở dialog cho user chọn candidate
       if (this.reviewCount > 0) {
@@ -123,10 +201,7 @@ export class KiotVietPurchaseOrderDialogComponent {
       description: line.xmlName,
       invoiceUnit: line.unit,
       candidates: [...line.candidates],
-      // Chọn sẵn SP đang gán, không có thì gợi ý candidate đầu tiên
-      selectedIdx: line.product
-        ? Math.max(0, line.candidates.findIndex(c => c.Id === line.product!.Id))
-        : (line.candidates.length ? 0 : -1)
+      selectedIdx: this.defaultSelectedIdx(line)
     }));
 
     const dialogRef = this.dialog.open(PurchaseMatchReviewDialogComponent, {
@@ -141,6 +216,7 @@ export class KiotVietPurchaseOrderDialogComponent {
     result.forEach((product, lineIndex) => {
       this.purchaseOrderService.setLineProduct(this.lines[lineIndex], product);
     });
+    this.cacheState();
     log('[KVPurchaseOrderDialog] review xong, còn chưa khớp:', this.unmatchedCount);
 
     this.notify(
@@ -150,9 +226,25 @@ export class KiotVietPurchaseOrderDialogComponent {
     );
   }
 
+  /** Candidate chọn sẵn: SP đang gán → ưu tiên candidate khớp đơn vị hóa đơn → candidate đầu */
+  private defaultSelectedIdx(line: PurchaseLine): number {
+    if (line.product) {
+      return Math.max(0, line.candidates.findIndex(c => c.Id === line.product!.Id));
+    }
+    const targetUnit = this.purchaseOrderService.normalizeUnit(line.unit);
+    if (targetUnit) {
+      const unitIdx = line.candidates.findIndex(
+        c => this.purchaseOrderService.normalizeUnit(c.Unit) === targetUnit
+      );
+      if (unitIdx >= 0) return unitIdx;
+    }
+    return line.candidates.length ? 0 : -1;
+  }
+
   removeLine(index: number): void {
     this.lines.splice(index, 1);
     this.lines.forEach((line, i) => (line.stt = i + 1));
+    this.cacheState();
   }
 
   // ============ Sửa số liệu trên bảng ============
@@ -163,6 +255,7 @@ export class KiotVietPurchaseOrderDialogComponent {
     const unitPrice = Number(line.unitPrice) || 0;
     const discount = Number(line.discount) || 0;
     line.amount = Math.round(quantity * unitPrice - discount);
+    this.cacheState();
   }
 
   matchPercent(line: PurchaseLine): number {
@@ -219,6 +312,8 @@ export class KiotVietPurchaseOrderDialogComponent {
         this.invoiceNumber.trim(),
         complete
       );
+      // Tạo phiếu thành công → xóa nháp để lần mở sau bắt đầu mới
+      localStorage.removeItem(this.DRAFT_KEY);
       this.notify(`${label} phiếu nhập ${result?.Code || ''} thành công`);
       this.dialogRef.close({ created: true, complete, purchaseOrder: result });
     } catch (error: any) {

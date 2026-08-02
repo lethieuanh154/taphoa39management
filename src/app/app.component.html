@@ -1,12 +1,15 @@
 <ng-container *ngIf="authState$ | async as auth">
-  <!-- Login page: no sidebar -->
-  <ng-container *ngIf="!auth.isAuthenticated">
-    <router-outlet></router-outlet>
-  </ng-container>
-
-  <!-- Authenticated: sidebar + content -->
-  <div class="management-layout" [class.sidebar-collapsed]="sidebarCollapsed" *ngIf="auth.isAuthenticated">
-    <nav class="sidebar">
+  <!--
+    IMPORTANT: a SINGLE router-outlet, never wrapped in an auth *ngIf.
+    Previously two outlets sat inside *ngIf="auth.isAuthenticated" /
+    *ngIf="!auth.isAuthenticated", so any auth-state flip destroyed and
+    re-created the active page, wiping in-memory work (e.g. the product list
+    on /edit-products). Only the sidebar is toggled now; redirecting an
+    unauthenticated user is the guard's job.
+  -->
+  <div class="management-layout" [class.sidebar-collapsed]="sidebarCollapsed"
+    [class.no-sidebar]="!auth.isAuthenticated">
+    <nav class="sidebar" *ngIf="auth.isAuthenticated">
       <div class="sidebar-header">
         <span class="logo" *ngIf="!sidebarCollapsed">Quản Lý</span>
         <button class="toggle-btn" (click)="toggleSidebar()">
@@ -74,9 +77,20 @@
     </nav>
 
     <main class="content">
+      <!-- Session expiry notice: emitTokenExpired() had no UI before, so users
+           were dropped to /login with no explanation and no chance to react. -->
+      <div class="session-banner" *ngIf="sessionExpired$ | async">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span class="session-banner-text">{{ sessionMessage$ | async }}</span>
+        <button type="button" class="session-banner-action" (click)="relogin()">Đăng nhập lại</button>
+        <button type="button" class="session-banner-close" (click)="dismissSessionBanner()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
       <router-outlet></router-outlet>
     </main>
 
-    <app-chat-bubble></app-chat-bubble>
+    <app-chat-bubble *ngIf="auth.isAuthenticated"></app-chat-bubble>
   </div>
 </ng-container>

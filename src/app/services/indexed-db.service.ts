@@ -49,6 +49,32 @@ export class IndexedDBService {
     }
   }
 
+  /** How long to wait for a versioned open before treating it as blocked. */
+  private readonly OPEN_TIMEOUT_MS = 10000;
+
+  /**
+   * Reject instead of hanging when a versioned open is blocked by another tab.
+   */
+  private withOpenTimeout(
+    open: Promise<IDBPDatabase>,
+    dbName: string,
+    wasBlocked: () => boolean
+  ): Promise<IDBPDatabase> {
+    return new Promise<IDBPDatabase>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const why = wasBlocked()
+          ? 'blocked by a connection in another tab'
+          : 'timed out';
+        reject(new Error(`Opening ${dbName} ${why} after ${this.OPEN_TIMEOUT_MS}ms`));
+      }, this.OPEN_TIMEOUT_MS);
+
+      open.then(
+        db => { clearTimeout(timer); resolve(db); },
+        err => { clearTimeout(timer); reject(err); }
+      );
+    });
+  }
+
   async getDB(dbName: string, version: number, upgradeFn?: (db: IDBPDatabase) => void): Promise<IDBPDatabase> {
     // Return existing open connection if still valid
     if (this.dbConnections[dbName] && this.connectionStatus[dbName]) {
@@ -59,9 +85,15 @@ export class IndexedDBService {
     const openAndStore = async (targetVersion?: number, upgrade?: (db: IDBPDatabase) => void) => {
       const vText = targetVersion ? ` v${targetVersion}` : '';
       console.log(`🔄 Opening DB ${dbName}${vText}`);
+
+      let isBlocked = false;
+
       this.dbs[dbName] = targetVersion ? openDB(dbName, targetVersion, {
         upgrade: upgrade,
-        blocked: (event) => console.warn(`⚠️ Database ${dbName} blocked (version conflict). Event:`, event),
+        blocked: (event) => {
+          isBlocked = true;
+          console.warn(`⚠️ Database ${dbName} blocked (version conflict). Event:`, event);
+        },
         blocking: (event) => {
           console.warn(`⚠️ Database ${dbName} received blocking event, closing old connection. Event:`, event);
           try { this.closeDB(dbName); } catch (err) { console.error(`❌ Error while closing DB ${dbName} during blocking:`, err); }
@@ -69,7 +101,12 @@ export class IndexedDBService {
       }) : openDB(dbName);
 
       try {
-        this.dbConnections[dbName] = await this.dbs[dbName];
+        // An upgrade blocked by a connection in another tab NEVER settles, which
+        // would hang every caller (and leave loading spinners stuck forever).
+        // Time it out so we can fall back to the existing version instead.
+        this.dbConnections[dbName] = targetVersion
+          ? await this.withOpenTimeout(this.dbs[dbName], dbName, () => isBlocked)
+          : await this.dbs[dbName];
         this.connectionStatus[dbName] = true;
         console.log(`✅ Connection opened for ${dbName} v${this.dbConnections[dbName]?.version}`);
         return this.dbConnections[dbName]!;
@@ -79,6 +116,18 @@ export class IndexedDBService {
         this.connectionStatus[dbName] = false;
         delete this.dbs[dbName];
         throw err;
+      }
+    };
+
+    // Upgrading an existing DB can be blocked by another tab. When that happens,
+    // fall back to whatever version is already on disk: reads keep working with
+    // the current stores instead of the whole app stalling.
+    const openOrFallback = async (targetVersion: number, upgrade?: (db: IDBPDatabase) => void) => {
+      try {
+        return await openAndStore(targetVersion, upgrade);
+      } catch (err) {
+        console.warn(`⚠️ Could not open ${dbName} v${targetVersion}, falling back to existing version:`, err);
+        return await openAndStore();
       }
     };
 
@@ -122,7 +171,7 @@ export class IndexedDBService {
           if (!storesExist) {
             // Object stores don't exist - need to bump version and run upgrade
             console.log(`⚠️ DB ${dbName} has no object stores, bumping version to force upgrade`);
-            return await openAndStore(existingVersion + 1, upgradeFn);
+            return await openOrFallback(existingVersion + 1, upgradeFn);
           }
           return await openAndStore();
         }
@@ -130,7 +179,7 @@ export class IndexedDBService {
         // If existingVersion < requested version, open with requested version and run upgradeFn
         if (existingVersion < version) {
           existing.close();
-          return await openAndStore(version, upgradeFn);
+          return await openOrFallback(version, upgradeFn);
         }
 
         // Otherwise, return existing
@@ -143,7 +192,7 @@ export class IndexedDBService {
     } catch (err) {
       // Fallback: try to open with requested version directly; this will raise VersionError if lower than existing
       console.warn(`⚠️ Error while probing existing DB version for ${dbName}:`, err);
-      return await openAndStore(version, upgradeFn);
+      return await openOrFallback(version, upgradeFn);
     }
   }
 

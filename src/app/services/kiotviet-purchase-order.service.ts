@@ -62,10 +62,59 @@ const PURCHASE_BRANCH = {
 @Injectable({ providedIn: 'root' })
 export class KiotVietPurchaseOrderService {
 
+  /** localStorage: nhớ lựa chọn SP của user theo tên hàng XML (tên hàng đã normalize → SP KiotViet) */
+  private readonly MATCH_STORAGE_KEY = 'kvPurchaseOrderMatches';
+
   constructor(
     private http: HttpClient,
     private kiotvietService: KiotvietService
   ) {}
+
+  // ============ Ghi nhớ lựa chọn match (localStorage) ============
+
+  /** Chuẩn hóa đơn vị tính để so sánh (bỏ hoa/thường + khoảng trắng) */
+  normalizeUnit(unit: string): string {
+    return (unit || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  /** Key ghi nhớ gồm tên hàng + đơn vị (tránh nhầm cùng SP khác đơn vị, vd ly ↔ thùng) */
+  private normalizeKey(name: string, unit: string): string {
+    const n = (name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const u = this.normalizeUnit(unit);
+    if (!n) return '';
+    return u ? `${n}||${u}` : n;
+  }
+
+  private loadSavedMatches(): Record<string, KiotVietPurchaseProduct> {
+    try {
+      return JSON.parse(localStorage.getItem(this.MATCH_STORAGE_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  /** SP user đã chọn trước đó cho tên hàng + đơn vị này (null nếu chưa từng chọn) */
+  getSavedMatch(xmlName: string, unit: string): KiotVietPurchaseProduct | null {
+    const key = this.normalizeKey(xmlName, unit);
+    if (!key) return null;
+    return this.loadSavedMatches()[key] || null;
+  }
+
+  private saveMatch(xmlName: string, unit: string, product: KiotVietPurchaseProduct | null): void {
+    const key = this.normalizeKey(xmlName, unit);
+    if (!key) return;
+    const map = this.loadSavedMatches();
+    if (product) {
+      map[key] = product;
+    } else {
+      delete map[key]; // user bỏ qua → xóa ghi nhớ cũ
+    }
+    try {
+      localStorage.setItem(this.MATCH_STORAGE_KEY, JSON.stringify(map));
+    } catch (error) {
+      logError('[KVPurchaseOrder] saveMatch error:', error);
+    }
+  }
 
   // ============ 1. Đọc XML ============
 
@@ -120,24 +169,61 @@ export class KiotVietPurchaseOrderService {
     return this.kiotvietService.autocompletePurchaseProducts(term);
   }
 
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   /**
-   * Tự khớp từng dòng XML với SP KiotViet theo tên hàng.
-   * CHỈ auto-chọn khi trùng tên 100%; còn lại giữ candidates để user xác nhận trong dialog review.
+   * Tìm SP có retry khi gặp lỗi mạng tạm thời ("Failed to fetch" — KiotViet chặn khi bắn dồn).
+   */
+  private async searchProductsWithRetry(term: string, attempts = 3): Promise<KiotVietPurchaseProduct[]> {
+    let lastError: any;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await this.searchProducts(term);
+      } catch (error: any) {
+        lastError = error;
+        const isNetwork = error?.name === 'TypeError' || /failed to fetch|networkerror|load failed/i.test(error?.message || '');
+        if (!isNetwork || i === attempts - 1) throw error;
+        await this.delay(400 * (i + 1)); // backoff 0.4s, 0.8s
+      }
+    }
+    throw lastError;
+  }
+
+  /**
+   * Tự khớp từng dòng XML với SP KiotViet theo tên hàng + ĐƠN VỊ.
+   * Autocomplete KiotViet trả mỗi đơn vị 1 row cùng ProductName (vd "...(ly)", "...(thùng)"),
+   * nên phải chọn đúng row có Unit khớp ĐVT trên hóa đơn — nếu không sẽ nhập nhầm đơn vị gốc.
+   * CHỈ auto-chọn khi trùng tên 100% VÀ đúng đơn vị; còn lại để user xác nhận trong dialog review.
    */
   async autoMatchLines(lines: PurchaseLine[]): Promise<void> {
     for (const line of lines) {
       if (!line.xmlName) continue;
       line.searching = true;
       try {
-        const results = await this.searchProducts(line.xmlName);
+        const results = await this.searchProductsWithRetry(line.xmlName);
         line.candidates = results || [];
-        const best = this.pickBestMatch(line.xmlName, line.candidates);
-        line.matchScore = best.score;
-        // Chỉ tự nhận khi khớp tuyệt đối
-        line.product = best.score >= 1 ? best.product : null;
+        const best = this.pickBestMatch(line.xmlName, line.unit, line.candidates);
+
+        // Ưu tiên lựa chọn user đã ghi nhớ trước đó (theo tên + đơn vị)
+        const saved = this.getSavedMatch(line.xmlName, line.unit);
+        if (saved) {
+          line.product = saved;
+          if (!line.candidates.some(c => c.Id === saved.Id)) {
+            line.candidates = [saved, ...line.candidates];
+          }
+        } else if (best.score >= 1 && best.unitMatch) {
+          // Chỉ tự nhận khi tên khớp tuyệt đối VÀ đơn vị khớp
+          line.product = best.product;
+        } else {
+          line.product = null; // tên khớp nhưng sai/thiếu đơn vị → cần user kiểm tra
+        }
+        line.matchScore = line.product ? this.similarity(line.xmlName, line.product.ProductName) : best.score;
         line.needsReview = !line.product;
-        log('[KVPurchaseOrder] match:', line.xmlName, '→',
-          best.product?.Code || 'KHÔNG KHỚP', `(score=${best.score.toFixed(2)}, candidates=${line.candidates.length})`);
+        log('[KVPurchaseOrder] match:', `${line.xmlName} (${line.unit})`, '→',
+          line.product ? `${line.product.Code} [${line.product.Unit}]` : 'KHÔNG KHỚP',
+          `(score=${line.matchScore.toFixed(2)}, unitMatch=${best.unitMatch}, saved=${!!saved}, candidates=${line.candidates.length})`);
       } catch (error) {
         logError('[KVPurchaseOrder] autoMatchLines error:', line.xmlName, error);
         line.candidates = [];
@@ -150,7 +236,7 @@ export class KiotVietPurchaseOrderService {
     }
   }
 
-  /** Gán SP đã chọn (từ dialog review) cho 1 dòng */
+  /** Gán SP đã chọn (từ dialog review) cho 1 dòng + ghi nhớ vào localStorage cho lần sau */
   setLineProduct(line: PurchaseLine, product: KiotVietPurchaseProduct | null): void {
     line.product = product;
     line.needsReview = !product;
@@ -158,19 +244,30 @@ export class KiotVietPurchaseOrderService {
     if (product && !line.candidates.some(c => c.Id === product.Id)) {
       line.candidates = [product, ...line.candidates];
     }
+    this.saveMatch(line.xmlName, line.unit, product);
   }
 
+  /**
+   * Chọn candidate tốt nhất: ưu tiên khớp ĐƠN VỊ, sau đó tới độ giống tên.
+   * Trả về `unitMatch` để caller quyết định auto-nhận hay đưa vào review.
+   */
   private pickBestMatch(
     name: string,
+    unit: string,
     results: KiotVietPurchaseProduct[]
-  ): { product: KiotVietPurchaseProduct | null; score: number } {
-    if (!results?.length) return { product: null, score: 0 };
-    let best: { product: KiotVietPurchaseProduct | null; score: number } = { product: null, score: -1 };
+  ): { product: KiotVietPurchaseProduct | null; score: number; unitMatch: boolean } {
+    if (!results?.length) return { product: null, score: 0, unitMatch: false };
+    const targetUnit = this.normalizeUnit(unit);
+    let best: { product: KiotVietPurchaseProduct | null; score: number; unitMatch: boolean; rank: number } =
+      { product: null, score: -1, unitMatch: false, rank: -Infinity };
     for (const p of results) {
-      const score = this.similarity(name, p.ProductName);
-      if (score > best.score) best = { product: p, score };
+      const nameSim = this.similarity(name, p.ProductName);
+      const unitMatch = !!targetUnit && this.normalizeUnit(p.Unit) === targetUnit;
+      // Đơn vị khớp có trọng số áp đảo (+2) để chọn đúng row đơn vị dù tên giống nhau
+      const rank = nameSim + (unitMatch ? 2 : 0);
+      if (rank > best.rank) best = { product: p, score: nameSim, unitMatch, rank };
     }
-    return best;
+    return { product: best.product, score: best.score, unitMatch: best.unitMatch };
   }
 
   /** Độ giống tên hàng (0..1): 1 = trùng tuyệt đối, còn lại dùng Dice coefficient trên bigram */
