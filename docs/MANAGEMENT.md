@@ -9,6 +9,31 @@ TapHoa39Management là ứng dụng quản lý dành cho Song Minh Shop, xây d�
 
 ---
 
+## ⚠️ CODE MIRROR — TapHoa39BanHang
+
+App này **copy code** từ `TapHoa39BanHang`, không share package. Fix một bên là bên kia vẫn còn lỗi.
+
+| Vùng mirror | Mức trùng |
+|---|---|
+| `src/app/components/edit-product-page/**` | 51/58 file `.ts`/`.html` giống hệt byte-for-byte |
+| `src/app/services/*.ts` | 23/37 file trùng tên giống hệt byte-for-byte |
+
+**Bắt buộc sau mỗi lần sửa vùng mirror:** kiểm tra file cùng đường dẫn ở BanHang, sửa luôn hoặc nói rõ lý do bỏ qua, rồi build cả hai app.
+
+```bash
+diff -rq --exclude='*.css' --exclude='*.scss' \
+  TapHoa39BanHang/src/app/components/edit-product-page \
+  TapHoa39Management/src/app/components/edit-product-page
+```
+
+**Đã diverge có chủ đích — KHÔNG copy mù:** `auth.service.ts`, `indexed-db.service.ts` (BanHang có handler `onclose`), `product.service.ts`, `token-expired.service.ts`, `invoice.service.ts`, `order.service.ts`, `kiotviet.service.ts`, `merged-products.service.ts`, và trong `edit-product-page/`: `edit-product-page-refactored.component.ts` + `.html`, `services/product-edit.service.ts`, `invoice-processing-page.component.ts`, `match-review-dialog.component.ts`, `edit-product-dialog/`, `product-info-dialog/`.
+
+**KHÔNG mirror:** `app.component.*` (Management có sidebar + auth `*ngIf`, BanHang chỉ `<router-outlet>` trần). Hai app **khác origin** → SalesDB / localStorage / sessionStorage **tách biệt hoàn toàn**; code phải đồng bộ nhưng không cần deploy đồng thời.
+
+Doc chi tiết của `edit-product-page` nằm ở `TapHoa39BanHang/docs/components/edit-product-page/EDIT-PRODUCT-PAGE.md`. Rule đầy đủ: mục **MIRRORED CODE** trong `CLAUDE.md` thư mục gốc.
+
+---
+
 ## Tech Stack
 
 | Layer | Công nghệ |
@@ -174,6 +199,10 @@ Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → m�
 
 ### Khôi phục state trang Edit Product
 `edit-product-page-refactored.component.ts` snapshot `productGroups` / `searchTerm` / `activeQuery` / `pendingCloneSave` / `productColors` vào **sessionStorage** key `edit_product_page_state` (per-tab), khôi phục ở cuối `ngOnInit`. Giúp sống sót qua component re-create (auth flip, Chrome tab discard, reload).
+
+Snapshot **chỉ để vẽ tạm**: sessionStorage sống qua cả F5 lẫn hard reload, nên `OnHand`/`Cost`/`BasePrice` trong đó đóng băng tại thời điểm search — máy khác sửa tồn kho thì reload bao nhiêu lần cũng thấy số cũ. `restoreState()` gọi tiếp `refreshRestoredData()`: chạy lại `queryProducts()` / `searchProducts()` trên IndexedDB rồi group lại. Re-query rỗng → giữ snapshot. `pendingCloneSave` → re-apply `applyCloneDataToProductGroups()` (clone chưa lưu nằm ở localStorage).
+
+Realtime có **2 kênh**: `setupCrossTabSync()` (BroadcastChannel — chỉ tab khác cùng browser) và `setupRealtimeSync()` (`ProductService.productOnHandUpdated$` — WebSocket, **giữa các máy**). Cả hai đổ về `patchProductGroups()`, patch tại chỗ và **bỏ qua row `Edited === true`** để không nuốt giá trị user đang nhập.
 
 `cleanOldEditingData()` KHÔNG còn xoá toàn bộ `editing_childProduct_*` — localStorage dùng chung giữa các tab nên xoá hết sẽ mất dữ liệu đang chờ lưu của tab khác. Nay dùng TTL 12h, theo dõi qua index `edit_page_editing_meta` (map key → thời điểm nhìn thấy lần đầu; key lạ được coi là mới).
 

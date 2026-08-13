@@ -165,6 +165,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     this.setupConnectivityHint();
     this.setupInvoiceEmailListener();
     this.setupCrossTabSync();
+    this.setupRealtimeSync();
 
     // Restore the displayed list last, after searchControl wiring is in place
     this.restoreState();
@@ -174,6 +175,11 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
    * Restore the displayed product list from sessionStorage.
    * sessionStorage is per-tab, so this survives a component re-create
    * without leaking state between browser tabs.
+   *
+   * IMPORTANT: the snapshot is only a placeholder for instant paint. sessionStorage
+   * survives F5 AND hard reload, so its OnHand/Cost/BasePrice go stale as soon as
+   * another machine edits the product. refreshRestoredData() re-queries IndexedDB
+   * right after so the rows show current numbers.
    */
   private restoreState(): void {
     try {
@@ -194,8 +200,53 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       }
 
       console.log(`♻️ Khôi phục ${this.productGroups.length} nhóm sản phẩm từ sessionStorage`);
+
+      void this.refreshRestoredData();
     } catch (error) {
       console.warn('Không khôi phục được state trang:', error);
+    }
+  }
+
+  /**
+   * Re-run the snapshot's search/query against IndexedDB so restored rows carry
+   * current stock and prices instead of the values frozen at snapshot time.
+   *
+   * Pending edits survive: transformToEditedProduct() re-applies the
+   * editing_childProduct_* entries, and clone data is re-applied below.
+   */
+  private async refreshRestoredData(): Promise<void> {
+    try {
+      let products: EditedProduct[];
+
+      if (this.activeQuery) {
+        products = await this.productEditService.queryProducts(
+          this.activeQuery.conditions,
+          this.activeQuery.limit,
+          this.productColors
+        );
+      } else if (this.searchTerm) {
+        products = await this.productEditService.searchProducts(this.searchTerm, this.productColors);
+      } else {
+        return;
+      }
+
+      // Keep the snapshot rather than blanking the page if the re-query finds nothing
+      if (!products || products.length === 0) {
+        console.warn('♻️ Làm mới dữ liệu: không tìm thấy sản phẩm, giữ nguyên snapshot');
+        return;
+      }
+
+      this.productGroups = this.groupProductsByMaster(products);
+
+      // Unsaved clone data lives in localStorage, not in the fresh IndexedDB rows
+      if (this.pendingCloneSave) {
+        this.applyCloneDataToProductGroups();
+      }
+
+      this.persistState();
+      console.log(`♻️ Đã làm mới ${this.productGroups.length} nhóm sản phẩm từ IndexedDB`);
+    } catch (error) {
+      console.warn('Không làm mới được dữ liệu sau khi khôi phục:', error);
     }
   }
 
@@ -1457,33 +1508,78 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
   private setupCrossTabSync(): void {
     this.crossTabSubscription = this.crossTabSync.onHandUpdated$.subscribe(updates => {
-      if (!updates || updates.length === 0 || this.productGroups.length === 0) return;
+      if (!updates || updates.length === 0) return;
 
-      const updateMap = new Map<number, ProductOnHandUpdate>();
-      updates.forEach(u => updateMap.set(u.Id, u));
-
-      let updated = 0;
-      for (const group of this.productGroups) {
-        const allProducts = [group.master, ...group.children];
-        for (const product of allProducts) {
-          const u = updateMap.get(product.Id);
-          if (u) {
-            product.OnHand = u.OnHand;
-            if (u.OnHandNV !== undefined) (product as any).OnHandNV = u.OnHandNV;
-            if (u.BasePrice !== undefined) product.BasePrice = u.BasePrice;
-            if (u.Cost !== undefined) product.Cost = u.Cost;
-            updated++;
-          }
-        }
-      }
-
+      const updated = this.patchProductGroups(updates);
       if (updated > 0) {
-        // Trigger change detection by creating new array reference
-        this.productGroups = [...this.productGroups];
-        this.persistState();
         console.log(`[CrossTab] Updated ${updated} products from another tab`);
       }
     });
+  }
+
+  /**
+   * Realtime sync ACROSS MACHINES.
+   *
+   * CrossTabSyncService uses BroadcastChannel, which only reaches other tabs of the
+   * same browser. Updates from another machine arrive over WebSocket and surface on
+   * ProductService.productOnHandUpdated$ after IndexedDB has been written, so the
+   * displayed rows must be patched from that stream too.
+   */
+  private setupRealtimeSync(): void {
+    this.connectivitySubscriptions.add(
+      this.productService.productOnHandUpdated$.subscribe(update => {
+        if (!update?.productId) return;
+
+        const updated = this.patchProductGroups([{
+          Id: Number(update.productId),
+          OnHand: update.onHand as number,
+          OnHandNV: update.onHandNV,
+          BasePrice: update.basePrice,
+          Cost: update.cost
+        }]);
+
+        if (updated > 0) {
+          console.log(`[Realtime] Updated product ${update.productId} from another machine`);
+        }
+      })
+    );
+  }
+
+  /**
+   * Patch displayed rows in place from an OnHand/price update list.
+   * Returns how many rows were touched.
+   */
+  private patchProductGroups(updates: ProductOnHandUpdate[]): number {
+    if (!updates || updates.length === 0 || this.productGroups.length === 0) return 0;
+
+    const updateMap = new Map<number, ProductOnHandUpdate>();
+    updates.forEach(u => updateMap.set(Number(u.Id), u));
+
+    let updated = 0;
+    for (const group of this.productGroups) {
+      const allProducts = [group.master, ...group.children];
+      for (const product of allProducts) {
+        const u = updateMap.get(Number(product.Id));
+        if (!u) continue;
+
+        // Don't clobber rows the user is editing — their pending values would be lost
+        if (product.Edited) continue;
+
+        if (u.OnHand !== undefined) product.OnHand = u.OnHand;
+        if (u.OnHandNV !== undefined) (product as any).OnHandNV = u.OnHandNV;
+        if (u.BasePrice !== undefined) product.BasePrice = u.BasePrice;
+        if (u.Cost !== undefined) product.Cost = u.Cost;
+        updated++;
+      }
+    }
+
+    if (updated > 0) {
+      // Trigger change detection by creating new array reference
+      this.productGroups = [...this.productGroups];
+      this.persistState();
+    }
+
+    return updated;
   }
 
   private setupInvoiceEmailListener() {

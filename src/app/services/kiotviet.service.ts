@@ -294,6 +294,19 @@ export class KiotvietService {
   }
 
   // ========= Auth helpers & unified retry-on-401/403 =========
+  /**
+   * Nạp credentials vào bộ nhớ nếu chưa có.
+   * BẮT BUỘC gọi trước khi đọc this.LatestBranchId để build payload/body:
+   * performKiotVietFetchWithRetry chỉ nạp credentials lúc gửi request, tức là SAU khi
+   * payload đã được dựng xong → Number(null) = 0 → KiotViet tra tồn kho ở chi nhánh 0
+   * và trả KvValidateProductException "Không đủ số lượng tồn kho" cho toàn bộ dòng hàng.
+   */
+  private ensureCredentialsLoaded(): void {
+    if (!this.accessToken || !this.retailer || !this.LatestBranchId) {
+      this.loadStoredCredentials();
+    }
+  }
+
   private loadStoredCredentials(): boolean {
     const storedToken = localStorage.getItem('kv_access_token');
     const storedRetailer = localStorage.getItem('kv_retailer');
@@ -440,6 +453,9 @@ export class KiotvietService {
     }
   }
   async updateProductToKiotviet(formDataGetFromKiotViet: any): Promise<any> {
+    // BranchForProductCostss dưới đây đọc this.LatestBranchId → nạp credentials trước
+    this.ensureCredentialsLoaded();
+
     const fD = new FormData();
     fD.append("product", JSON.stringify(formDataGetFromKiotViet.Product))
     fD.append("BranchForProductCostss", `[{ "Id": ${this.LatestBranchId}, "Name": "Chi nhánh trung tâm" }]`)
@@ -512,6 +528,9 @@ export class KiotvietService {
   }
 
   async addCustomer(customerData: any): Promise<any> {
+    // Payload đọc this.LatestBranchId → nạp credentials trước khi build
+    this.ensureCredentialsLoaded();
+
     const payload = {
       Customer: {
         BranchId: Number(this.LatestBranchId),
@@ -701,6 +720,14 @@ export class KiotvietService {
     paymentMethod: 'Cash' | 'Card' | 'Transfer' = 'Cash',
     options?: { description?: string }
   ): Promise<any> {
+    // Payload dưới đây đọc this.LatestBranchId → phải nạp credentials TRƯỚC khi build
+    this.ensureCredentialsLoaded();
+    // Chặn sớm: gửi BranchId=0 sẽ khiến KiotViet báo "Không đủ số lượng tồn kho" cho
+    // TOÀN BỘ dòng hàng — thông báo sai hoàn toàn và cực khó lần ra nguyên nhân.
+    if (!this.LatestBranchId) {
+      throw new Error('Chưa nạp được chi nhánh KiotViet (BranchId). Vui lòng đăng nhập lại.');
+    }
+
     // Tính tổng tiền và tạo invoice details
     const invoiceDetails: InvoiceDetailItem[] = [];
     let total = 0;
