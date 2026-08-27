@@ -202,6 +202,8 @@ Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → m�
 
 Snapshot **chỉ để vẽ tạm**: sessionStorage sống qua cả F5 lẫn hard reload, nên `OnHand`/`Cost`/`BasePrice` trong đó đóng băng tại thời điểm search — máy khác sửa tồn kho thì reload bao nhiêu lần cũng thấy số cũ. `restoreState()` gọi tiếp `refreshRestoredData()`: chạy lại `queryProducts()` / `searchProducts()` trên IndexedDB rồi group lại. Re-query rỗng → giữ snapshot. `pendingCloneSave` → re-apply `applyCloneDataToProductGroups()` (clone chưa lưu nằm ở localStorage).
 
+`productGroups` có **3 nguồn gốc**: query builder (`activeQuery`), text search/barcode (`searchTerm`), và **hóa đơn AI** (`lastSearchTerms` — union nhiều term, luồng này KHÔNG set `searchTerm`). `refreshRestoredData()` phải tái tạo đúng nguồn, nếu không SP của hóa đơn bị thay bằng kết quả của một `searchTerm` cũ còn sót → user mất hết dòng đang nhập số lượng. `lastSearchTerms` được persist vào snapshot và clear ở mọi luồng search/query/clear khác.
+
 Realtime có **2 kênh**: `setupCrossTabSync()` (BroadcastChannel — chỉ tab khác cùng browser) và `setupRealtimeSync()` (`ProductService.productOnHandUpdated$` — WebSocket, **giữa các máy**). Cả hai đổ về `patchProductGroups()`, patch tại chỗ và **bỏ qua row `Edited === true`** để không nuốt giá trị user đang nhập.
 
 `cleanOldEditingData()` KHÔNG còn xoá toàn bộ `editing_childProduct_*` — localStorage dùng chung giữa các tab nên xoá hết sẽ mất dữ liệu đang chờ lưu của tab khác. Nay dùng TTL 12h, theo dõi qua index `edit_page_editing_meta` (map key → thời điểm nhìn thấy lần đầu; key lạ được coi là mới).

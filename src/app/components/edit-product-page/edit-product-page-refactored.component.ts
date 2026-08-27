@@ -103,6 +103,12 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
   // Active advanced-query filter (shown as a chip next to the Query button)
   activeQuery: { conditions: QueryCondition[]; limit: number } | null = null;
 
+  // Provenance của productGroups khi nó KHÔNG dựng từ searchTerm/activeQuery.
+  // Luồng hóa đơn AI dựng danh sách từ UNION nhiều search term và không set searchTerm;
+  // refreshRestoredData() cần đúng danh sách này để tái tạo, nếu không sẽ thay toàn bộ
+  // SP của hóa đơn bằng kết quả của một term cũ còn sót trong searchTerm.
+  private lastSearchTerms: string[] | null = null;
+
   // Per-tab snapshot of the displayed list, so a component re-create
   // (auth state flip, Chrome tab discard, reload) doesn't wipe the results.
   private readonly STATE_KEY = 'edit_product_page_state';
@@ -191,6 +197,9 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
       this.productGroups = state.productGroups;
       this.searchTerm = state.searchTerm || '';
+      this.lastSearchTerms = Array.isArray(state.lastSearchTerms) && state.lastSearchTerms.length
+        ? state.lastSearchTerms
+        : null;
       this.activeQuery = state.activeQuery || null;
       this.pendingCloneSave = !!state.pendingCloneSave;
       this.productColors = state.productColors || {};
@@ -224,9 +233,26 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
           this.activeQuery.limit,
           this.productColors
         );
+      } else if (this.lastSearchTerms?.length) {
+        // Luồng hóa đơn AI dựng productGroups từ UNION nhiều searchTerms và KHÔNG set
+        // this.searchTerm. Phải chạy lại đúng union đó — nếu rơi xuống nhánh searchTerm
+        // bên dưới thì toàn bộ SP của hóa đơn bị thay bằng kết quả của 1 term cũ.
+        const all: EditedProduct[] = [];
+        for (const term of this.lastSearchTerms) {
+          all.push(...await this.productEditService.searchProducts(term, this.productColors));
+        }
+        const seen = new Set<string>();
+        products = all.filter(p => {
+          const id = String(p.Id);
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
       } else if (this.searchTerm) {
         products = await this.productEditService.searchProducts(this.searchTerm, this.productColors);
       } else {
+        // Không tái tạo được nguồn gốc của danh sách → giữ snapshot, tuyệt đối không
+        // dựng lại từ dữ liệu khác.
         return;
       }
 
@@ -264,6 +290,10 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       sessionStorage.setItem(this.STATE_KEY, JSON.stringify({
         productGroups: this.productGroups,
         searchTerm: this.searchTerm,
+        // Nguồn gốc của productGroups khi nó KHÔNG dựng từ searchTerm/activeQuery
+        // (luồng hóa đơn AI = union nhiều term). Thiếu field này thì refreshRestoredData()
+        // không tái tạo đúng danh sách.
+        lastSearchTerms: this.lastSearchTerms,
         activeQuery: this.activeQuery,
         pendingCloneSave: this.pendingCloneSave,
         productColors: this.productColors,
@@ -445,6 +475,8 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
   private async triggerSearchWithCode(code: string) {
     this.isLoading = true;
+    this.searchTerm = code;
+    this.lastSearchTerms = null; // danh sách mới dựng từ 1 term → tái tạo được từ searchTerm
     try {
       const products = await this.productEditService.searchProducts(code, this.productColors);
       this.productGroups = this.groupProductsByMaster(products);
@@ -488,6 +520,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
   async onSearch(event: Event) {
     this.searchTerm = (event.target as HTMLInputElement).value.trim();
     this.activeQuery = null; // text search clears the advanced-query filter
+    this.lastSearchTerms = null; // rời khỏi danh sách hóa đơn AI
 
     if (!this.searchTerm) {
       this.productGroups = [];
@@ -858,6 +891,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       this.productGroups = [];
       this.searchTerm = '';
       this.activeQuery = null;
+      this.lastSearchTerms = null;
       this.pendingCloneSave = false;
       this.searchControl.setValue('');
       this.persistState();
@@ -1081,6 +1115,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
         this.productGroups = this.groupProductsByMaster(products);
         this.activeQuery = { conditions: result.conditions, limit };
         this.searchTerm = '';
+        this.lastSearchTerms = null; // query tái tạo được từ activeQuery
         this.searchControl.setValue('');
         console.log('✅ Query results:', this.productGroups.length, 'groups');
       } catch (error) {
@@ -1113,6 +1148,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     this.activeQuery = null;
     this.productGroups = [];
     this.searchTerm = '';
+    this.lastSearchTerms = null;
     this.searchControl.setValue('');
     this.persistState();
   }
@@ -1189,6 +1225,9 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
             console.groupEnd();
 
             this.productGroups = this.groupProductsByMaster(unique);
+            // Ghi lại provenance: danh sách này là union nhiều term, không tái tạo được
+            // từ this.searchTerm (vốn không hề được set ở luồng này).
+            this.lastSearchTerms = [...result.searchTerms];
           }
 
           // For clone: apply localStorage data to displayed products (no auto-save)
