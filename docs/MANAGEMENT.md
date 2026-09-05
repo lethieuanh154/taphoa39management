@@ -58,6 +58,7 @@ Doc chi tiết của `edit-product-page` nằm ở `TapHoa39BanHang/docs/compone
 | `/attendance` | AttendancePageComponent | authGuard | Chấm công |
 | `/payroll` | PayrollPageComponent | authGuard | Tính lương |
 | `/promotions` | PromotionListPageComponent | authGuard | Quản lý khuyến mãi |
+| `/customers` | CustomerPageComponent | authGuard | Danh mục khách hàng (kế toán) |
 | `/` | → redirect `/orders` | - | Mặc định |
 
 ---
@@ -165,6 +166,28 @@ src/app/
 - Bật/tắt không cần xóa
 - Tích hợp KiotViet: `kiotVietCampaignId`, `kiotVietSalePromotionId`, `kiotVietPromotionType` (5=discount, 6=gift)
 
+### 7. Danh mục Khách hàng (`customer-page`)
+
+Bản copy từ `TapHoa39KeToan/src/app/components/customer-page/`. Quản lý hồ sơ khách hàng theo chuẩn kế toán (công nợ phải thu TK 131), tách biệt hoàn toàn với `Customer` của KiotViet.
+
+- CRUD khách hàng + modal xem chi tiết + xác nhận xóa
+- Filter: search (mã/tên/MST), trạng thái `ACTIVE`/`INACTIVE`
+- Thống kê: tổng, đang hoạt động, ngừng hoạt động, đếm theo nhóm
+- Nhiều người liên hệ (`contacts[]`) + nhiều tài khoản ngân hàng (`bankAccounts[]`)
+- Tự sinh mã `KH0001` qua `getNextCustomerCode()`
+- Loại KH: `COMPANY` | `INDIVIDUAL` | `GOVERNMENT`
+- Nhóm KH: `RETAIL` | `WHOLESALE` | `AGENCY` | `VIP` | `OTHER`
+
+**File liên quan:**
+
+| File | Ghi chú |
+|------|---------|
+| `components/customer-page/customer-page.component.{ts,html,css}` | Copy y hệt bên KeToan, chỉ đổi import service |
+| `models/customer.models.ts` | Copy y hệt bên KeToan. **Khác** `models/customer.model.ts` (KiotViet) |
+| `services/customer-catalog.service.ts` | Copy bên KeToan, class đổi tên `CustomerService` → `CustomerCatalogService` để tránh trùng với `services/customer.service.ts` (KiotViet) |
+
+⚠️ Service hiện chạy trên **demo data in-memory** (`loadDemoData()`), chưa nối Firestore/Flask.
+
 ---
 
 ## Authentication & Security
@@ -260,12 +283,23 @@ isClone, CloneSourceId, Tax, Description, Image
 NormalizedName, NormalizedCode, OrderTemplate
 ```
 
-### Customer
+### Customer (KiotViet — `models/customer.model.ts`)
 ```
 Code, Name, ContactNumber, RewardPoint, TotalPoint, TotalInvoiced
 Debt, Groups, Organization, RegistrationBonus
 BirthDate, Address, Email, TaxCode, IsActive, Uuid
 ```
+
+### Customer (Kế toán — `models/customer.models.ts`)
+```
+id, code, name, shortName, customerType, customerGroup
+taxCode, businessLicense, legalRepresentative
+address, ward, district, province, country
+phone, fax, email, website, contacts[], bankAccounts[]
+paymentTermDays, creditLimit, accountCode (mặc định 131)
+status, note, createdAt/By, updatedAt/By
+```
+Helper: `generateCustomerCode()`, `validateCustomer()`, `isValidTaxCode()`, `formatFullAddress()`, `createDefaultCustomer()`
 
 ### Invoice / InvoiceTab
 ```

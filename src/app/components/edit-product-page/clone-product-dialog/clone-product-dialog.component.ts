@@ -128,13 +128,57 @@ export class CloneProductDialogComponent implements OnInit {
   }
 
   /**
-   * Kiểm tra xem clone cho product gốc đã tồn tại chưa
-   * Dựa vào CloneSourceId (ID của product gốc)
+   * Kiểm tra xem clone cho product gốc đã tồn tại chưa.
+   * Khóa chính là CloneSourceId; fallback theo Code vì clone LUÔN giữ nguyên Code của
+   * bản gốc, còn CloneSourceId thì clone cũ có thể không có. Thiếu fallback này là
+   * guard trả về "chưa có clone" và sinh ra bộ đơn vị trùng thứ 2.
    */
-  private findExistingClone(originalProductId: number): EditedProduct | undefined {
-    return this.existingClones.find(clone =>
+  private findExistingClone(originalProductId: number, originalCode?: string): EditedProduct | undefined {
+    const bySourceId = this.existingClones.find(clone =>
       String((clone as any).CloneSourceId) === String(originalProductId)
     );
+    if (bySourceId) return bySourceId;
+
+    if (!originalCode) return undefined;
+    return this.existingClones.find(clone => clone.Code === originalCode);
+  }
+
+  /**
+   * Đọc lại clone từ IndexedDB ngay trước khi ghi.
+   * Dialog có thể đã mở lâu, hoặc tab/máy khác vừa tạo clone xong — danh sách
+   * existingClones nhận lúc mở dialog không còn là sự thật.
+   */
+  private async refreshExistingClonesFromDb(): Promise<void> {
+    if (!this.masterProduct) return;
+
+    const allProducts = await this.productService.getAllProductsFromIndexedDB();
+
+    const originalIds = new Set<string>([String(this.masterProduct.Id)]);
+    const originalCodes = new Set<string>();
+    if (this.masterProduct.Code) originalCodes.add(this.masterProduct.Code);
+    this.childProducts.forEach(c => {
+      originalIds.add(String(c.Id));
+      if (c.Code) originalCodes.add(c.Code);
+    });
+
+    const masterId = String(this.masterProduct.Id);
+    const isCloneRecord = (p: any): boolean => {
+      if (p?.isClone === true) return true;
+      if (typeof p?.isClone === 'string' && p.isClone.toLowerCase() === 'true') return true;
+      if (p?.KiotVietSync === false) return true;
+      const onHandNV = Number(p?.OnHandNV) || 0;
+      const onHand = Number(p?.OnHand) || 0;
+      return onHandNV > 0 && onHand === 0;
+    };
+
+    this.existingClones = (allProducts as any[]).filter(p => {
+      if (!isCloneRecord(p)) return false;
+      if (p.CloneSourceId && originalIds.has(String(p.CloneSourceId))) return true;
+      if (p.CloneMasterSourceId && String(p.CloneMasterSourceId) === masterId) return true;
+      return !!p.Code && originalCodes.has(p.Code);
+    }) as EditedProduct[];
+
+    console.log(`🔄 [CloneDialog] Kiểm tra lại trước khi lưu: ${this.existingClones.length} clone đã tồn tại`);
   }
 
   /**
@@ -155,7 +199,7 @@ export class CloneProductDialogComponent implements OnInit {
     const masterConversion = this.masterProduct.ConversionValue || 1;
 
     // Master product preview - kiểm tra đã có clone chưa
-    const existingMasterClone = this.findExistingClone(this.masterProduct.Id);
+    const existingMasterClone = this.findExistingClone(this.masterProduct.Id, this.masterProduct.Code);
     this.previewProducts.push({
       code: this.masterProduct.Code || '',
       name: this.masterProduct.Name || this.masterProduct.FullName || '',
@@ -171,7 +215,7 @@ export class CloneProductDialogComponent implements OnInit {
       const childConversion = child.ConversionValue || 1;
       const childOnHandNV = (this.cloneOnHandNV * masterConversion) / childConversion;
 
-      const existingChildClone = this.findExistingClone(child.Id);
+      const existingChildClone = this.findExistingClone(child.Id, child.Code);
       this.previewProducts.push({
         code: child.Code || '',
         name: child.Name || child.FullName || '',
@@ -231,7 +275,7 @@ export class CloneProductDialogComponent implements OnInit {
     const masterConversion = this.masterProduct.ConversionValue || 1;
 
     // Kiểm tra master đã có clone chưa
-    const existingMasterClone = this.findExistingClone(this.masterProduct.Id);
+    const existingMasterClone = this.findExistingClone(this.masterProduct.Id, this.masterProduct.Code);
 
     // Chỉ tạo master clone nếu CHƯA tồn tại
     if (!existingMasterClone) {
@@ -279,7 +323,7 @@ export class CloneProductDialogComponent implements OnInit {
 
     // Clone child products - CHỈ những child chưa có clone
     for (const child of this.childProducts) {
-      const existingChildClone = this.findExistingClone(child.Id);
+      const existingChildClone = this.findExistingClone(child.Id, child.Code);
 
       // Bỏ qua nếu clone đã tồn tại
       if (existingChildClone) {
@@ -345,12 +389,12 @@ export class CloneProductDialogComponent implements OnInit {
     if (!this.masterProduct) return false;
 
     // Kiểm tra master đã có clone chưa
-    const existingMasterClone = this.findExistingClone(this.masterProduct.Id);
+    const existingMasterClone = this.findExistingClone(this.masterProduct.Id, this.masterProduct.Code);
     if (!existingMasterClone) return false;
 
     // Kiểm tra tất cả children đã có clone chưa
     for (const child of this.childProducts) {
-      const existingChildClone = this.findExistingClone(child.Id);
+      const existingChildClone = this.findExistingClone(child.Id, child.Code);
       if (!existingChildClone) return false;
     }
 
@@ -364,7 +408,30 @@ export class CloneProductDialogComponent implements OnInit {
     try {
       this.saving = true;
 
+      // Chốt chặn cuối: đọc lại IndexedDB rồi mới quyết định tạo gì.
+      try {
+        await this.refreshExistingClonesFromDb();
+        this.updatePreview();
+      } catch (refreshErr) {
+        // Không đọc được DB → không có cơ sở khẳng định "chưa có clone" → dừng,
+        // vì tạo nhầm bộ clone thứ 2 tốn công dọn hơn nhiều so với bấm lại nút.
+        console.error('❌ [CloneDialog] Không kiểm tra lại được clone hiện có:', refreshErr);
+        alert('Không kiểm tra được clone đã tồn tại. Vui lòng thử lại để tránh tạo trùng.');
+        return;
+      }
+
       const products = this.generateCloneProducts();
+
+      // Không bao giờ tạo master clone thứ 2 cho cùng một SP gốc
+      const masterCloneAlreadyExists = !!this.masterProduct &&
+        !!this.findExistingClone(this.masterProduct.Id, this.masterProduct.Code);
+      const wouldCreateNewMaster = products.some(p => Number(p.MasterUnitId) === Number(p.Id));
+      if (masterCloneAlreadyExists && wouldCreateNewMaster) {
+        console.error('🛑 [CloneDialog] Chặn tạo master clone trùng:', products.map(p => ({ Id: p.Id, Code: p.Code })));
+        alert('Sản phẩm này đã có bộ clone. Không tạo thêm để tránh trùng đơn vị.');
+        this.dialogRef.close(null);
+        return;
+      }
 
       if (products.length === 0) {
         // Kiểm tra nếu tất cả đã được clone → thông báo và đóng dialog

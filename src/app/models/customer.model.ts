@@ -1,3 +1,10 @@
+export interface CustomerNote {
+    id: string;
+    text: string;
+    createdAt: string;
+    createdBy?: string;
+}
+
 export interface Customer {
     Code: string;
     CompareCode: string;
@@ -35,6 +42,7 @@ export interface Customer {
     TaxCode?: string;
     Email?: string;
     Comments?: string;
+    GiftNotes?: CustomerNote[];
     TotalReturn: number;
     TotalRevenue: number;
     Uuid: string;

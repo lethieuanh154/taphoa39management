@@ -1102,6 +1102,31 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   /**
+   * Chuẩn nhận diện clone của dự án: isClone===true OR (OnHandNV>0 && OnHand===0)
+   * OR KiotVietSync===false. Chỉ đọc mỗi `isClone` sẽ bỏ sót clone cũ thiếu field,
+   * guard tưởng chưa có clone và tạo thêm một bộ đơn vị trùng.
+   */
+  private isCloneRecord(p: any): boolean {
+    if (p?.isClone === true) return true;
+    if (typeof p?.isClone === 'string' && p.isClone.toLowerCase() === 'true') return true;
+    if (p?.KiotVietSync === false) return true;
+    const onHandNV = Number(p?.OnHandNV) || 0;
+    const onHand = Number(p?.OnHand) || 0;
+    return onHandNV > 0 && onHand === 0;
+  }
+
+  /**
+   * Clone có thuộc SP gốc đang thao tác không. Khớp BẤT KỲ khóa nào cũng tính là "đã có
+   * clone" — thà nhận dư còn hơn tạo trùng: clone giữ nguyên Code của bản gốc nên Code
+   * là khóa cuối cùng bám được khi CloneSourceId/CloneMasterSourceId bị thiếu.
+   */
+  private cloneBelongsToProduct(p: any, originalIds: Set<string>, originalCodes: Set<string>): boolean {
+    if (p?.CloneSourceId && originalIds.has(String(p.CloneSourceId))) return true;
+    if (p?.CloneMasterSourceId && String(p.CloneMasterSourceId) === String(this.product.Id)) return true;
+    return !!p?.Code && originalCodes.has(p.Code);
+  }
+
+  /**
    * Handle clone button click - open clone dialog
    * Only shown for non-clone products (original KiotViet products)
    * Lấy danh sách existingClones từ IndexedDB để tránh tạo duplicate
@@ -1125,61 +1150,27 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
       originalProductIds.add(String(this.product.Id));
       this.childProducts?.forEach(c => originalProductIds.add(String(c.Id)));
 
-      // Tìm các clone đã tồn tại cho product này và các children
-      // Clone được xác định bằng CloneSourceId trỏ về product gốc
-      let existingClones = allProducts.filter((p: any) => {
-        if (!p.isClone) return false;
-        // Clone của product: CloneSourceId === original product Id (master hoặc child)
-        return originalProductIds.has(String(p.CloneSourceId));
-      });
+      // Tìm các clone đã tồn tại cho product này và các children.
+      // Clone cũ có thể thiếu CloneSourceId / CloneMasterSourceId / isClone, nên phải
+      // dò theo NHIỀU khóa — guard rỗng là nguyên nhân sinh ra bộ clone thứ 2 trùng đơn vị.
+      const originalCodes = new Set<string>();
+      if (this.product.Code) originalCodes.add(this.product.Code);
+      this.childProducts?.forEach(c => { if (c.Code) originalCodes.add(c.Code); });
 
-      // ✅ FIX: Verify existing clones thực sự có dữ liệu hợp lệ
-      // Clone rác có thể có Code khác với product gốc (data corruption)
-      const invalidClones: any[] = [];
-      const validClones = existingClones.filter((clone: any) => {
-        // Clone hợp lệ phải có:
-        // 1. isClone = true
-        // 2. CloneSourceId tồn tại
-        // 3. Code khớp với product gốc (quan trọng!)
-        const hasValidCloneSourceId = !!clone.CloneSourceId;
-        const hasMatchingCode = clone.Code === this.product.Code ||
-          this.childProducts?.some(c => c.Code === clone.Code);
-
-        if (!hasValidCloneSourceId || !hasMatchingCode) {
-          console.log(`⚠️ [onCloneClick] Skipping invalid clone: Id=${clone.Id}, Code=${clone.Code} (expected: ${this.product.Code}), CloneSourceId=${clone.CloneSourceId}`);
-          invalidClones.push(clone);
-          return false;
-        }
-        return true;
-      });
-
-      // Nếu có clones bị filter → log warning và xóa khỏi IndexedDB
-      if (invalidClones.length > 0) {
-        console.log(`⚠️ [onCloneClick] Filtered out ${invalidClones.length} invalid clones`);
-        // Xóa clone rác khỏi IndexedDB để tránh vấn đề trong tương lai
-        for (const invalidClone of invalidClones) {
-          try {
-            await this.productService.deleteProductFromIndexedDB(invalidClone.Id);
-            console.log(`🗑️ [onCloneClick] Deleted orphan clone from IndexedDB: Id=${invalidClone.Id}`);
-          } catch (err) {
-            console.warn(`⚠️ Failed to delete orphan clone ${invalidClone.Id}:`, err);
-          }
-        }
-      }
-
-      existingClones = validClones;
-
-      // ✅ FIX: Kiểm tra xem clone group có complete không (có master clone)
-      // Master clone có CloneSourceId === master product Id
-      const masterCloneExists = existingClones.some((c: any) =>
-        String(c.CloneSourceId) === String(this.product.Id)
+      const existingClones = allProducts.filter((p: any) =>
+        this.isCloneRecord(p) && this.cloneBelongsToProduct(p, originalProductIds, originalCodes)
       );
 
-      // Nếu có child clones nhưng không có master clone → orphan clones → bỏ qua tất cả
+      // Master clone: CloneSourceId trỏ về master gốc, hoặc (clone legacy) Code trùng master.
+      const masterCloneExists = existingClones.some((c: any) =>
+        String(c.CloneSourceId) === String(this.product.Id) || c.Code === this.product.Code
+      );
+
+      // KHÔNG xóa clone "lạ" khỏi IndexedDB nữa: xóa local không xóa Firestore, lần sync
+      // sau nó quay lại và trong lúc đó guard tưởng chưa có clone → tạo trùng bộ mới.
+      // Cũng KHÔNG clear danh sách khi thiếu master clone: giữ child cũ để không nhân đôi child.
       if (existingClones.length > 0 && !masterCloneExists) {
-        console.log(`⚠️ [onCloneClick] Found ${existingClones.length} orphan child clones (no master clone). Ignoring them.`);
-        console.log(`⚠️ [onCloneClick] Orphan clones:`, existingClones.map((c: any) => ({ Id: c.Id, CloneSourceId: c.CloneSourceId, MasterUnitId: c.MasterUnitId })));
-        existingClones = []; // Clear orphan clones để tạo mới toàn bộ
+        console.warn(`⚠️ [onCloneClick] Có ${existingClones.length} child clone nhưng thiếu master clone — chỉ tạo bù master, giữ nguyên child cũ.`);
       }
 
       console.log(`📋 Found ${existingClones.length} valid existing clones for product ${this.product.Id}`);

@@ -53,6 +53,11 @@
         </div>
       </div>
 
+      <a class="nav-item" routerLink="/customers" routerLinkActive="active">
+        <i class="fa-solid fa-address-book"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Khách hàng</span>
+      </a>
+
       <a class="nav-item" routerLink="/delivery" routerLinkActive="active">
         <i class="fa-solid fa-truck"></i>
         <span class="nav-text" *ngIf="!sidebarCollapsed">Giao hàng</span>

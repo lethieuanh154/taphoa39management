@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Customer } from '../models/customer.model';
+import { Customer, CustomerNote } from '../models/customer.model';
 import { InvoiceTab } from '../models/invoice.model';
 import { catchError, of, firstValueFrom, throwError, Observable, Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { IndexedDBService } from './indexed-db.service';
@@ -686,6 +686,68 @@ export class CustomerService {
     }
 
     return null;
+  }
+
+  async getCustomerNotes(customerId: number | string): Promise<CustomerNote[]> {
+    const url = `${this.getBackendBaseUrl()}/api/firebase/customers/${customerId}/notes`;
+
+    const result = await firstValueFrom(
+      this.http.get<{ status: string; notes: CustomerNote[] }>(url).pipe(
+        catchError((err) => {
+          console.error('Loi khi tai ghi chu khach hang:', err);
+          return throwError(() => err);
+        })
+      )
+    );
+
+    return result?.notes ?? [];
+  }
+
+  async addCustomerNote(customerId: number | string, text: string, createdBy?: string): Promise<CustomerNote[]> {
+    const url = `${this.getBackendBaseUrl()}/api/firebase/customers/${customerId}/notes`;
+
+    const result = await firstValueFrom(
+      this.http.post<{ status: string; note: CustomerNote; notes: CustomerNote[] }>(url, { text, createdBy: createdBy ?? '' }).pipe(
+        catchError((err) => {
+          console.error('Loi khi them ghi chu khach hang:', err);
+          return throwError(() => err);
+        })
+      )
+    );
+
+    const notes = result?.notes ?? [];
+    await this.syncNotesToIndexedDB(customerId, notes);
+    return notes;
+  }
+
+  async deleteCustomerNote(customerId: number | string, noteId: string): Promise<CustomerNote[]> {
+    const url = `${this.getBackendBaseUrl()}/api/firebase/customers/${customerId}/notes/${noteId}`;
+
+    const result = await firstValueFrom(
+      this.http.delete<{ status: string; notes: CustomerNote[] }>(url).pipe(
+        catchError((err) => {
+          console.error('Loi khi xoa ghi chu khach hang:', err);
+          return throwError(() => err);
+        })
+      )
+    );
+
+    const notes = result?.notes ?? [];
+    await this.syncNotesToIndexedDB(customerId, notes);
+    return notes;
+  }
+
+  private async syncNotesToIndexedDB(customerId: number | string, notes: CustomerNote[]): Promise<void> {
+    try {
+      const localCustomer = await this.getCustomerByIdFromIndexedDB(Number(customerId));
+      if (localCustomer) {
+        localCustomer.GiftNotes = notes;
+        await this.updateCustomerFromIndexedDB(localCustomer);
+        this.customersUpdatedSubject.next();
+      }
+    } catch (err) {
+      console.error('Loi khi dong bo ghi chu vao IndexedDB:', err);
+    }
   }
 
   async clearCustomerDebt(customerId: number | string): Promise<Customer | null> {
