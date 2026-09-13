@@ -3,8 +3,8 @@
     IMPORTANT: a SINGLE router-outlet, never wrapped in an auth *ngIf.
     Previously two outlets sat inside *ngIf="auth.isAuthenticated" /
     *ngIf="!auth.isAuthenticated", so any auth-state flip destroyed and
-    re-created the active page, wiping in-memory work (e.g. the product list
-    on /edit-products). Only the sidebar is toggled now; redirecting an
+    re-created the active page, wiping in-memory work. Only the sidebar is
+    toggled now; redirecting an
     unauthenticated user is the guard's job.
   -->
   <div class="management-layout" [class.sidebar-collapsed]="sidebarCollapsed"
@@ -16,10 +16,6 @@
           <i class="fa-solid" [ngClass]="sidebarCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
         </button>
       </div>
-      <a class="nav-item" routerLink="/edit-products" routerLinkActive="active">
-        <i class="fa-solid fa-box-open"></i>
-        <span class="nav-text" *ngIf="!sidebarCollapsed">Hàng hóa</span>
-      </a>
       <a class="nav-item" routerLink="/orders" routerLinkActive="active">
         <i class="fa-solid fa-cart-shopping"></i>
         <span class="nav-text" *ngIf="!sidebarCollapsed">Đơn hàng</span>

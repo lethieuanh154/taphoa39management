@@ -15,7 +15,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ProductEditService, EditedProduct, QueryCondition } from './services/product-edit.service';
 import { EditedItemDialog } from './edited-products-dialog.component';
-import { InputProductDialogComponent } from './add-product-dialog/add-product-dialog.component';
 import { AddOriginalProductDialogComponent } from './add-product-dialog/add-original-product-dialog.component';
 import { ProductRowComponent, DeleteProductEvent } from './product-row/product-row.component';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
@@ -98,7 +97,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
   searchTerm = '';
   userChangedFinalBasePrice: Record<string, boolean> = {};
-  pendingCloneSave = false; // true when clone data is displayed but not yet saved
 
   // Active advanced-query filter (shown as a chip next to the Query button)
   activeQuery: { conditions: QueryCondition[]; limit: number } | null = null;
@@ -201,7 +199,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
         ? state.lastSearchTerms
         : null;
       this.activeQuery = state.activeQuery || null;
-      this.pendingCloneSave = !!state.pendingCloneSave;
       this.productColors = state.productColors || {};
 
       if (this.searchTerm) {
@@ -221,7 +218,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
    * current stock and prices instead of the values frozen at snapshot time.
    *
    * Pending edits survive: transformToEditedProduct() re-applies the
-   * editing_childProduct_* entries, and clone data is re-applied below.
+   * editing_childProduct_* entries.
    */
   private async refreshRestoredData(): Promise<void> {
     try {
@@ -264,11 +261,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
 
       this.productGroups = this.groupProductsByMaster(products);
 
-      // Unsaved clone data lives in localStorage, not in the fresh IndexedDB rows
-      if (this.pendingCloneSave) {
-        this.applyCloneDataToProductGroups();
-      }
-
       this.persistState();
       console.log(`♻️ Đã làm mới ${this.productGroups.length} nhóm sản phẩm từ IndexedDB`);
     } catch (error) {
@@ -295,7 +287,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
         // không tái tạo đúng danh sách.
         lastSearchTerms: this.lastSearchTerms,
         activeQuery: this.activeQuery,
-        pendingCloneSave: this.pendingCloneSave,
         productColors: this.productColors,
         savedAt: Date.now()
       }));
@@ -892,7 +883,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
       this.searchTerm = '';
       this.activeQuery = null;
       this.lastSearchTerms = null;
-      this.pendingCloneSave = false;
       this.searchControl.setValue('');
       this.persistState();
 
@@ -1027,22 +1017,6 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     }
   }
 
-  addProduct() {
-    const dialogRef = this.dialog.open(InputProductDialogComponent, {
-      width: '900px',
-      maxWidth: '96vw'
-    });
-
-    dialogRef.afterClosed().subscribe((result: any) => {
-      if (result && result.saved) {
-        console.log('✅ New clone product added:', result.count, 'products');
-        if (this.searchTerm) {
-          this.onSearch({ target: { value: this.searchTerm } } as any);
-        }
-      }
-    });
-  }
-
   addOriginalProduct() {
     const dialogRef = this.dialog.open(AddOriginalProductDialogComponent, {
       width: '900px',
@@ -1162,9 +1136,8 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
     });
 
     dialogRef.afterClosed().subscribe(async (result: any) => {
-      if (result?.action === 'updatePrices' || result?.action === 'updateClonePrices') {
-        const isCloneUpdate = result.action === 'updateClonePrices';
-        const label = isCloneUpdate ? 'CẬP NHẬT CLONE' : 'CẬP NHẬT GIÁ';
+      if (result?.action === 'updatePrices') {
+        const label = 'CẬP NHẬT GIÁ';
 
         this.isLoading = true;
         try {
@@ -1178,15 +1151,10 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
           localStorage.removeItem(this.EDIT_META_KEY);
           console.log(`[${label}] Cleared ${keysToRemove.length} stale editing_childProduct_ entries`);
 
-          const updateResult = isCloneUpdate
-            ? await this.invoicePriceUpdateService.updateClonePricesFromInvoice(
-                result.invoiceItems,
-                result.matchedProducts
-              )
-            : await this.invoicePriceUpdateService.updatePricesFromInvoice(
-                result.invoiceItems,
-                result.matchedProducts
-              );
+          const updateResult = await this.invoicePriceUpdateService.updatePricesFromInvoice(
+            result.invoiceItems,
+            result.matchedProducts
+          );
 
           // LOG: Update results
           console.group(`%c[${label}] Kết quả từ InvoicePriceUpdateService`, 'color: #4CAF50; font-weight: bold');
@@ -1218,7 +1186,7 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
               const edited = localStorage.getItem(`editing_childProduct_${p.Id}`);
               const editedData = edited ? JSON.parse(edited) : null;
               console.log(
-                `Id=${p.Id} Code=${p.Code} "${p.Name}" isClone=${p.isClone} MasterUnitId=${p.MasterUnitId}`,
+                `Id=${p.Id} Code=${p.Code} "${p.Name}" MasterUnitId=${p.MasterUnitId}`,
                 editedData ? `| EDITED: Box=${editedData.Box} Retail=${editedData.Retail} TotalPrice=${editedData.TotalPrice} Cost=${editedData.Cost}` : '| no edit'
               );
             });
@@ -1230,319 +1198,17 @@ export class EditProductPageRefactoredComponent implements OnInit, OnDestroy {
             this.lastSearchTerms = [...result.searchTerms];
           }
 
-          // For clone: apply localStorage data to displayed products (no auto-save)
-          if (isCloneUpdate) {
-            this.applyCloneDataToProductGroups();
-            this.pendingCloneSave = true;
-          }
-
           this.persistState();
 
-          this.snackBar.open(
-            isCloneUpdate ? 'Đã cập nhật Clone - Ấn nút Lưu để xác nhận!' : 'Đã cập nhật giá thành công!',
-            'Đóng', { duration: isCloneUpdate ? 5000 : 3000 }
-          );
+          this.snackBar.open('Đã cập nhật giá thành công!', 'Đóng', { duration: 3000 });
         } catch (error) {
-          console.error(`Error updating ${isCloneUpdate ? 'clone' : ''} prices:`, error);
-          this.snackBar.open(
-            isCloneUpdate ? 'Lỗi khi cập nhật Clone' : 'Lỗi khi cập nhật giá',
-            'Đóng', { duration: 5000 }
-          );
+          console.error('Error updating prices:', error);
+          this.snackBar.open('Lỗi khi cập nhật giá', 'Đóng', { duration: 5000 });
         } finally {
           this.isLoading = false;
         }
       }
     });
-  }
-
-  /**
-   * Apply clone data from localStorage to displayed product groups.
-   * Shows updated Cost/OnHandNV in the UI without saving to Firestore.
-   */
-  private applyCloneDataToProductGroups(): void {
-    // Helper to check if product is a clone
-    const isCloneProduct = (p: any): boolean => {
-      if (typeof p.isClone === 'boolean') return p.isClone;
-      if (typeof p.isClone === 'string') return p.isClone.toLowerCase() === 'true';
-      if (p.OnHandNV > 0 && (p.OnHand === 0 || !p.OnHand)) return true;
-      if (p.KiotVietSync === false) return true;
-      return false;
-    };
-
-    // Helper to find clone data from localStorage by Id or Code
-    const findCloneData = (product: any): any | null => {
-      if (product.Id) {
-        const byId = localStorage.getItem(`editing_childProduct_${product.Id}`);
-        if (byId) {
-          try {
-            const data = JSON.parse(byId);
-            if (data?.IsCloneUpdate) return data;
-          } catch { /* skip */ }
-        }
-      }
-      if (product.Code) {
-        const byCode = localStorage.getItem(`editing_childProduct_${product.Code}`);
-        if (byCode) {
-          try {
-            const data = JSON.parse(byCode);
-            if (data?.IsCloneUpdate) return data;
-          } catch { /* skip */ }
-        }
-      }
-      return null;
-    };
-
-    const parseNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
-
-    // Helper to apply clone data to a product, preserving originals for diff hints
-    const applyToProduct = (product: any, data: any, childProducts: any[] = []) => {
-      // Save original values BEFORE modifying, so diff-indicator hints work
-      const oldCost = parseNum(product.Cost);
-      const oldBasePrice = parseNum(product.BasePrice);
-      // For clone children: use derived original from master stock (child may have OnHandNV=0 in DB)
-      const derivedOrig = (product as any)._derivedOriginalOnHand;
-      const oldOnHandNV = derivedOrig !== undefined ? derivedOrig : parseNum(product.OnHandNV ?? product.OnHand);
-      (product as any)._originalCost = oldCost;
-      (product as any)._originalBasePrice = oldBasePrice;
-      (product as any)._originalOnHand = oldOnHandNV;
-
-      // FIX: For IsCloneUpdate data from updateClonePricesFromInvoice,
-      // use the PRE-CALCULATED Cost/OnHandNV directly instead of recalculating.
-      // This fixes two bugs:
-      // 1. Children don't have Box/Retail/TotalPrice → recalc gives 0 → no update
-      // 2. Master's largestConversion may differ between full group and displayed group
-      if (data.IsCloneUpdate && (data.Cost !== undefined || data.OnHandNV !== undefined)) {
-        const preCalcCost = parseNum(data.Cost);
-        const preCalcOnHandNV = parseNum(data.OnHandNV);
-        const preCalcBasePrice = data.BasePrice !== undefined ? parseNum(data.BasePrice) : oldBasePrice;
-
-        product.Cost = preCalcCost;
-        product.BasePrice = preCalcBasePrice;
-        (product as any).OnHandNV = preCalcOnHandNV;
-        product.OnHand = preCalcOnHandNV; // For getOnHandDiff()
-        product.Box = parseNum(data.Box);
-        product.Retail = parseNum(data.Retail);
-        product.TotalPrice = parseNum(data.TotalPrice);
-        product.Edited = true;
-        (product as any).IsCloneUpdate = true;
-        if (data.KeepBasePrice) product.KeepBasePrice = true;
-        return;
-      }
-
-      // FALLBACK: Recalculate from Box/Retail/TotalPrice (for non-IsCloneUpdate data)
-      const conversionValue = parseNum(product.ConversionValue) || 1;
-      const allConversions = [conversionValue, ...childProducts.map((c: any) => parseNum(c.ConversionValue) || 1)];
-      const largestConversion = Math.max(...allConversions);
-      const box = parseNum(data.Box);
-      const retail = parseNum(data.Retail);
-      const totalPrice = parseNum(data.TotalPrice);
-      const totalUnits = (box * largestConversion) + retail;
-      const addedOnHand = conversionValue > 0 ? totalUnits / conversionValue : 0;
-
-      let newCost = oldCost;
-      let newBasePrice = oldBasePrice;
-      if (totalPrice > 0 && totalUnits > 0) {
-        if (product.AverageCheckPoint === true) {
-          // WEIGHTED AVERAGE MODE (same as product-row recalculateCost)
-          const newCostPerUnit = addedOnHand > 0 ? totalPrice / addedOnHand : 0;
-          const combinedOnHand = oldOnHandNV + addedOnHand;
-          if (addedOnHand > 0 && combinedOnHand > 0) {
-            newCost = ((oldCost * oldOnHandNV) + (newCostPerUnit * addedOnHand)) / combinedOnHand;
-          } else if (addedOnHand > 0) {
-            newCost = newCostPerUnit || oldCost;
-          }
-        } else {
-          // SIMPLE MODE (same as product-row recalculateCost)
-          newCost = totalUnits > 0 ? (totalPrice / totalUnits) * conversionValue : oldCost;
-        }
-        // Calculate BasePrice change (same as original: BasePrice += costDiff)
-        if (!data.KeepBasePrice) {
-          newBasePrice = Math.round((oldBasePrice + (newCost - oldCost)) / 100) * 100;
-        }
-      } else if ((box > 0 || retail > 0) && totalPrice === 0) {
-        // Only Box/Retail (promo) - keep Cost, just update OnHandNV
-        newCost = oldCost;
-      }
-
-      // Apply calculated values
-      product.Cost = newCost;
-      product.BasePrice = newBasePrice;
-      (product as any).OnHandNV = oldOnHandNV + addedOnHand;
-      product.OnHand = oldOnHandNV + addedOnHand; // For getOnHandDiff()
-      product.Box = box;
-      product.Retail = retail;
-      product.TotalPrice = totalPrice;
-      product.Edited = true;
-      (product as any).IsCloneUpdate = true;
-      if (data.KeepBasePrice) product.KeepBasePrice = true;
-    };
-
-    let appliedCount = 0;
-    for (const group of this.productGroups) {
-      // Only apply to clone product groups
-      if (!isCloneProduct(group.master)) continue;
-
-      const masterData = findCloneData(group.master);
-      if (masterData) {
-        applyToProduct(group.master, masterData, group.children);
-        appliedCount++;
-      }
-
-      // For children: derive _originalOnHand from master's original stock
-      // (children may have OnHandNV=0 in IndexedDB even though master has stock)
-      const masterCV = parseNum(group.master.ConversionValue) || 1;
-      const masterOrigOnHand = (group.master as any)._originalOnHand;
-
-      for (const child of group.children) {
-        const childData = findCloneData(child);
-        if (childData) {
-          // Pre-set correct _originalOnHand derived from master before applyToProduct overwrites it
-          if (masterOrigOnHand !== undefined && childData.IsCloneUpdate) {
-            const childCV = parseNum(child.ConversionValue) || 1;
-            (child as any)._derivedOriginalOnHand = (masterOrigOnHand * masterCV) / childCV;
-          }
-          applyToProduct(child, childData);
-          appliedCount++;
-        }
-      }
-    }
-    console.log(`[ApplyClone] Applied clone data to ${appliedCount} products across ${this.productGroups.length} groups`);
-  }
-
-  /**
-   * Save pending clone products to Firestore.
-   * Called when user clicks the Save button on clone product rows.
-   */
-  async saveCloneProducts(): Promise<void> {
-    const cloneUpdates: any[] = [];
-
-    // Strategy 1: Read from localStorage (primary source)
-    for (let k = 0; k < localStorage.length; k++) {
-      const key = localStorage.key(k);
-      if (!key?.startsWith('editing_childProduct_')) continue;
-      try {
-        const data = JSON.parse(localStorage.getItem(key) || '');
-        if (data?.IsCloneUpdate && data?.Id) {
-          if (!cloneUpdates.find(u => String(u.Id) === String(data.Id))) {
-            cloneUpdates.push(data);
-          }
-        }
-      } catch { /* skip */ }
-    }
-
-    // Strategy 2: Fallback - collect from productGroups if localStorage was cleared
-    if (cloneUpdates.length === 0) {
-      for (const group of this.productGroups) {
-        const allProducts = [group.master, ...group.children];
-        for (const p of allProducts) {
-          if ((p as any).IsCloneUpdate && p.Id) {
-            if (!cloneUpdates.find(u => String(u.Id) === String(p.Id))) {
-              cloneUpdates.push({
-                Id: p.Id,
-                Code: p.Code,
-                Name: p.Name,
-                Cost: p.Cost,
-                BasePrice: p.BasePrice,
-                OnHandNV: (p as any).OnHandNV,
-                IsCloneUpdate: true
-              });
-            }
-          }
-        }
-      }
-    }
-
-    if (cloneUpdates.length === 0) {
-      this.snackBar.open('Không có Clone nào cần lưu', 'Đóng', { duration: 3000 });
-      return;
-    }
-
-    this.isLoading = true;
-    console.group('%c[SAVE CLONE] Lưu Clone vào Firestore', 'color: #E91E63; font-weight: bold');
-    console.log(`Saving ${cloneUpdates.length} clone products`);
-
-    try {
-      const now = new Date().toISOString();
-      const firestoreUpdates = cloneUpdates.map(p => ({
-        Id: p.Id,
-        Cost: p.Cost,
-        BasePrice: p.BasePrice,
-        OnHandNV: p.OnHandNV,
-        ModifiedDate: now
-      }));
-
-      firestoreUpdates.forEach(u => {
-        console.log(`  Id=${u.Id} Cost=${u.Cost} OnHandNV=${u.OnHandNV}`);
-      });
-
-      await this.productService.updateProducts(firestoreUpdates);
-
-      // Update IndexedDB + record product history
-      for (const update of cloneUpdates) {
-        try {
-          const existing = await this.productService.getProductByIdFromIndexedDB(update.Id);
-          if (existing) {
-            // Record history BEFORE updating IndexedDB (compare old vs new)
-            const masterId = existing.MasterUnitId || existing.Id;
-            this.productHistoryService.compareAndRecord(
-              masterId,
-              existing.Code || '',
-              existing.Name || '',
-              { Cost: existing.Cost || 0, BasePrice: existing.BasePrice || 0, OnHandNV: existing.OnHandNV || 0 },
-              { Cost: update.Cost, BasePrice: update.BasePrice, OnHandNV: update.OnHandNV },
-              undefined,
-              'edit'
-            );
-
-            const merged = {
-              ...existing,
-              Cost: update.Cost,
-              BasePrice: update.BasePrice ?? existing.BasePrice,
-              OnHandNV: update.OnHandNV,
-              OnHand: existing.OnHand,
-              ModifiedDate: now
-            };
-            await this.productService.updateProductFromIndexedDB(merged);
-          }
-        } catch (dbErr) {
-          console.warn(`Failed to update IndexedDB for ${update.Id}:`, dbErr);
-        }
-      }
-
-      // Clear IsCloneUpdate flags from localStorage
-      for (let k = localStorage.length - 1; k >= 0; k--) {
-        const key = localStorage.key(k);
-        if (key?.startsWith('editing_childProduct_')) {
-          try {
-            const data = JSON.parse(localStorage.getItem(key) || '');
-            if (data?.IsCloneUpdate) localStorage.removeItem(key);
-          } catch { /* skip */ }
-        }
-      }
-
-      // Clear IsCloneUpdate flag on product objects
-      for (const group of this.productGroups) {
-        if ((group.master as any).IsCloneUpdate) {
-          (group.master as any).IsCloneUpdate = false;
-        }
-        for (const child of group.children) {
-          if ((child as any).IsCloneUpdate) {
-            (child as any).IsCloneUpdate = false;
-          }
-        }
-      }
-
-      this.pendingCloneSave = false;
-      this.persistState();
-      this.snackBar.open('Đã lưu Clone thành công!', 'Đóng', { duration: 3000 });
-      console.log('Clone save complete!');
-    } catch (err) {
-      console.error('Clone save failed:', err);
-      this.snackBar.open('Lỗi khi lưu Clone', 'Đóng', { duration: 5000 });
-    } finally {
-      this.isLoading = false;
-      console.groupEnd();
-    }
   }
 
   private setupCrossTabSync(): void {

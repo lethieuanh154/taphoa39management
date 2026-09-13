@@ -91,7 +91,7 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
   displayedColumns: string[] = ['select', 'stt', 'description', 'unit', 'quantity', 'unit_price', 'amount', 'amount_after_vat', 'actions'];
 
   // === Tabs ===
-  activeTab: 'upload' | 'pdf' | 'email' | 'clone_image' = 'upload';
+  activeTab: 'upload' | 'pdf' | 'email' = 'upload';
   gmailLabels: GmailLabel[] = [];
   filteredLabels: GmailLabel[] = [];
   labelSearchText = '';
@@ -111,11 +111,6 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
   private currentInvoiceProvider = '';
   private currentPortalCredentials: Record<string, string> = {};
   private currentAttachmentType = '';
-
-  // === Clone Image ===
-  selectedCloneImageFile: File | null = null;
-  isCloneDragOver = false;
-  isCloneMode = false; // true when processing clone image
 
   // === Item Selection (checkbox) ===
   selectedItems: Set<number> = new Set();
@@ -241,7 +236,7 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
   // TAB SWITCHING (isolate state per tab)
   // =============================================================
 
-  switchTab(tab: 'upload' | 'pdf' | 'email' | 'clone_image'): void {
+  switchTab(tab: 'upload' | 'pdf' | 'email'): void {
     if (tab === this.activeTab) return;
 
     // Save current tab state
@@ -255,7 +250,6 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
 
     // Switch tab
     this.activeTab = tab;
-    this.isCloneMode = tab === 'clone_image';
 
     // Restore target tab state (or reset)
     const savedState = this.tabStates.get(tab);
@@ -579,7 +573,6 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
         validationErrors: this.validationErrors,
         savedToFirestore: this.savedToFirestore,
         activeTab: this.activeTab,
-        isCloneMode: this.isCloneMode,
         matchedProducts: matchedArr,
         userSelectedMatch: selectedArr,
         matchingComplete: !this.isMatching
@@ -600,7 +593,6 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
 
       // Restore tab state first to ensure correct matching mode
       this.activeTab = cache.activeTab || 'upload';
-      this.isCloneMode = cache.isCloneMode || false;
 
       this.processingResult = cache.processingResult;
       this.validationErrors = cache.validationErrors || [];
@@ -1681,332 +1673,6 @@ export class InvoiceProcessingDialogComponent implements OnInit, OnDestroy {
       });
       console.log(`[MERGE] Merged promotional items: ${items.length} → ${merged.length}`);
     }
-  }
-
-  // =============================================================
-  // CLONE IMAGE TAB METHODS
-  // =============================================================
-
-  onCloneDragOver(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isCloneDragOver = true;
-  }
-
-  onCloneDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isCloneDragOver = false;
-  }
-
-  onCloneDrop(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isCloneDragOver = false;
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      this.handleCloneImageFile(files[0]);
-    }
-  }
-
-  onCloneFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.handleCloneImageFile(input.files[0]);
-    }
-  }
-
-  private handleCloneImageFile(file: File): void {
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      this.snackBar.open('Vui lòng chọn file ảnh (JPG, PNG) hoặc PDF', 'Đóng', { duration: 3000, panelClass: 'error-snackbar' });
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      this.snackBar.open('File quá lớn. Vui lòng chọn file dưới 10MB', 'Đóng', { duration: 3000, panelClass: 'error-snackbar' });
-      return;
-    }
-    this.selectedCloneImageFile = file;
-    this.processingResult = null;
-    this.validationErrors = [];
-    this.isCloneMode = true;
-    this.resetForm();
-  }
-
-  processCloneImage(): void {
-    if (!this.selectedCloneImageFile) {
-      this.snackBar.open('Vui lòng chọn file trước', 'Đóng', { duration: 3000, panelClass: 'error-snackbar' });
-      return;
-    }
-
-    this.isProcessing = true;
-    this.isCloneMode = true;
-    this.invoiceProcessingService.resetProcessingSteps();
-
-    this.invoiceProcessingService.processImage(this.selectedCloneImageFile)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result) => {
-          this.isProcessing = false;
-          this.processingResult = result;
-
-          if (result.success && result.invoice) {
-            this.populateForm(result.invoice);
-            this.validationErrors = result.validation_errors || [];
-            this.mergePromotionalItems();
-            this.saveCache();
-
-            const methodLabel = result.processing_method === 'flash' ? 'Gemini Flash' : 'Gemini Pro';
-            const confidenceText = result.confidence ? ` (${(result.confidence * 100).toFixed(0)}%)` : '';
-            this.snackBar.open(`Đọc ảnh Clone thành công với ${methodLabel}${confidenceText}!`, 'Đóng', { duration: 3000, panelClass: 'success-snackbar' });
-
-          } else {
-            this.snackBar.open(result.error || 'Có lỗi xảy ra khi đọc ảnh', 'Đóng', { duration: 5000, panelClass: 'error-snackbar' });
-          }
-        },
-        error: () => {
-          this.isProcessing = false;
-          this.snackBar.open('Có lỗi xảy ra khi đọc ảnh', 'Đóng', { duration: 5000, panelClass: 'error-snackbar' });
-        }
-      });
-  }
-
-  clearCloneImage(): void {
-    this.selectedCloneImageFile = null;
-    this.processingResult = null;
-    this.validationErrors = [];
-    this.isCloneMode = false;
-    this.clearCache();
-    this.invoiceProcessingService.resetProcessingSteps();
-    this.resetForm();
-  }
-
-  /**
-   * Match invoice items to CLONE products only.
-   * Clone detection: isClone===true || (OnHandNV>0 && OnHand===0) || KiotVietSync===false
-   */
-  async matchCloneItemsToProducts(): Promise<void> {
-    if (!this.processingResult?.invoice?.items) return;
-    this.isMatching = true;
-
-    try {
-      const allProducts = await this.productService.getAllProductsFromIndexedDB();
-      if (!allProducts?.length) {
-        this.snackBar.open('Không có sản phẩm trong IndexedDB', 'Đóng', { duration: 3000 });
-        return;
-      }
-
-      const cloneIndices = allProducts.map((p: any, i: number) => this.isCloneProduct(p) ? i : -1).filter(i => i >= 0);
-      if (cloneIndices.length === 0) {
-        this.snackBar.open('Không tìm thấy sản phẩm Clone trong IndexedDB', 'Đóng', { duration: 3000, panelClass: 'error-snackbar' });
-        return;
-      }
-
-      this.matchedProducts.clear();
-      this.userSelectedMatch.clear();
-
-      const invoiceItems = this.processingResult.invoice.items;
-      const items = invoiceItems
-        .map((item, i) => ({ index: i, name: this.cleanDescriptionForMatching(item.description, item.unit) }))
-        .filter(item => !!item.name);
-
-      const matchMap = await this.fuzzyMatchService.matchAllAsync(items, allProducts, cloneIndices);
-
-      if (this.matchingCancelled) return;
-
-      const dedupClone = (ms: MatchResult[]) => {
-        const seenCode = new Set<string>();
-        const seenName = new Set<string>();
-        return ms.filter(m => {
-          const c = String(m.product?.Code || '');
-          const n = String(m.product?.Name || '').toLowerCase().trim();
-          if (c && seenCode.has(c)) return false;
-          if (n && seenName.has(n)) return false;
-          if (c) seenCode.add(c);
-          if (n) seenName.add(n);
-          return true;
-        });
-      };
-
-      matchMap.forEach((matches, i) => {
-        const deduped = dedupClone(matches);
-        this.matchedProducts.set(i, deduped);
-        this.userSelectedMatch.set(i, deduped[0]);
-      });
-
-      console.group('%c[CLONE MATCH] Kết quả matching Clone', 'color: #FF5722; font-weight: bold');
-      console.log(`Clone products: ${cloneIndices.length} / ${allProducts.length} total`);
-      invoiceItems.forEach((item, i) => {
-        const cleaned = this.cleanDescriptionForMatching(item.description, item.unit);
-        const m = this.matchedProducts.get(i);
-        console.log(`[${i}] "${item.description}"${item.description !== cleaned ? ` → cleaned: "${cleaned}"` : ''} →`, m?.map(x => `${x.product.Name} (${(x.score * 100).toFixed(0)}%, Code=${x.product.Code})`).join(' | ') || 'NONE');
-      });
-      console.groupEnd();
-
-    } catch (error) {
-      console.error('Error matching clone products:', error);
-    } finally {
-      this.isMatching = false;
-    }
-  }
-
-  /**
-   * Strip unit/quantity noise from invoice description before fuzzy matching.
-   * E.g., "Gluxena Chai 30 chai" → "Gluxena" (unit=THÙNG is separate field)
-   * This prevents unit words like "chai", "thùng" from polluting the match score.
-   */
-  private cleanDescriptionForMatching(description: string, unit?: string): string {
-    if (!description) return '';
-    let cleaned = description;
-
-    // Remove common Vietnamese unit words (case-insensitive)
-    const unitWords = [
-      'thùng', 'thung', 'chai', 'lon', 'lốc', 'loc', 'gói', 'goi',
-      'hộp', 'hop', 'bịch', 'bich', 'can', 'kg', 'gram', 'lít', 'lit',
-      'ml', 'cuộn', 'cuon', 'bao', 'túi', 'tui', 'cây', 'cay',
-      'ống', 'ong', 'hũ', 'hu', 'ly', 'kiện', 'kien', 'xấp', 'xap',
-      'cái', 'cai', 'chiếc', 'chiec', 'tấm', 'tam', 'tờ', 'to',
-      'bộ', 'bo',
-    ];
-
-    // Build regex: match unit words (possibly preceded by number) at word boundary
-    // Handles: "Chai 30 chai", "30chai", "1 thùng", etc.
-    const unitPattern = unitWords.join('|');
-    // Remove patterns like "30 chai", "chai 30", standalone numbers between unit words
-    cleaned = cleaned.replace(
-      new RegExp(`\\b(?:\\d+\\s*)?(?:${unitPattern})(?:\\s*\\d+)?\\b`, 'gi'),
-      ' '
-    );
-    // Remove standalone numbers (likely quantities) that remain
-    cleaned = cleaned.replace(/\b\d+\b/g, ' ');
-    // Remove the invoice unit if it appears in description
-    if (unit) {
-      cleaned = cleaned.replace(new RegExp(`\\b${unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), ' ');
-    }
-    // Collapse spaces and trim
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-    // If cleaning removed everything, fall back to original
-    return cleaned || description;
-  }
-
-  /**
-   * Check if a product is a Clone product
-   */
-  private isCloneProduct(p: any): boolean {
-    if (typeof p.isClone === 'boolean') return p.isClone;
-    if (typeof p.isClone === 'string') return p.isClone.toLowerCase() === 'true';
-    if (p.OnHandNV > 0 && (p.OnHand === 0 || !p.OnHand)) return true;
-    if (p.KiotVietSync === false) return true;
-    return false;
-  }
-
-  /**
-   * Update Clone prices: close dialog and pass data back with clone action
-   */
-  async updateClonePrices(): Promise<void> {
-    if (!this.processingResult?.invoice?.items || this.selectedItems.size === 0) {
-      this.snackBar.open('Không có dữ liệu hóa đơn', 'Đóng', { duration: 3000, panelClass: 'error-snackbar' });
-      return;
-    }
-
-    this.isMatching = true;
-    try {
-      const allProducts = await this.productService.getAllProductsFromIndexedDB();
-      if (!allProducts?.length) {
-        this.snackBar.open('Không có sản phẩm trong IndexedDB', 'Đóng', { duration: 3000 });
-        return;
-      }
-
-      const cloneIndices = allProducts.map((p: any, i: number) => this.isCloneProduct(p) ? i : -1).filter(i => i >= 0);
-      if (cloneIndices.length === 0) {
-        this.snackBar.open('Không tìm thấy sản phẩm Clone', 'Đóng', { duration: 3000, panelClass: 'error-snackbar' });
-        return;
-      }
-
-      const selectedIndices = Array.from(this.selectedItems);
-      const items = this.processingResult.invoice.items;
-      const matchItems = selectedIndices
-        .filter(i => !!this.cleanDescriptionForMatching(items[i]?.description, items[i]?.unit))
-        .map(i => ({ index: i, name: this.cleanDescriptionForMatching(items[i].description, items[i].unit) }));
-
-      const matchMap = await this.fuzzyMatchService.matchAllAsync(matchItems, allProducts, cloneIndices);
-      matchMap.forEach((matches, i) => { if (matches.length) this.userSelectedMatch.set(i, matches[0]); });
-    } finally {
-      this.isMatching = false;
-    }
-
-    this.executeUpdateClonePrices();
-  }
-
-  private executeUpdateClonePrices(): void {
-    const items = this.processingResult!.invoice!.items;
-
-    // Process only checked items
-    const selectedIndices = Array.from(this.selectedItems).sort((a, b) => a - b);
-
-    // Build confirmed matches: only for selected indices
-    const confirmedMatches = new Map<number, MatchResult>();
-    for (const index of selectedIndices) {
-      const matches = this.matchedProducts.get(index);
-      if (this.userSelectedMatch.has(index)) {
-        confirmedMatches.set(index, this.userSelectedMatch.get(index)!);
-      } else if (matches && matches.length > 0) {
-        confirmedMatches.set(index, matches[0]);
-      }
-    }
-
-    // Build invoice items — re-index to 0..N for selected items
-    const invoiceItems: InvoiceItemForUpdate[] = [];
-    const reindexedMatches = new Map<number, MatchResult>();
-    selectedIndices.forEach((origIdx, newIdx) => {
-      const item = items[origIdx];
-      invoiceItems.push({
-        description: item.description,
-        unit: item.unit,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        amount: item.amount,
-        isPromotional: item.amount === 0 && item.unit_price === 0
-      });
-      const match = confirmedMatches.get(origIdx);
-      if (match) {
-        reindexedMatches.set(newIdx, match);
-      }
-    });
-
-    // LOG
-    console.group('%c[CẬP NHẬT CLONE] Dữ liệu gửi đi', 'color: #FF5722; font-weight: bold');
-    selectedIndices.forEach((origIdx, newIdx) => {
-      const item = items[origIdx];
-      const match = confirmedMatches.get(origIdx);
-      const p = match?.product;
-      console.log(
-        `[${origIdx}→${newIdx}] "${item.description}" | unit=${item.unit} qty=${item.quantity} amount=${item.amount}`,
-        p ? `→ Code=${p.Code} Name="${p.Name}" isClone=${(p as any).isClone} OnHandNV=${(p as any).OnHandNV}` : '→ NO MATCH'
-      );
-    });
-    console.groupEnd();
-
-    // Collect search terms
-    const searchTerms: string[] = [];
-    reindexedMatches.forEach(match => {
-      const code = match.product?.Code;
-      if (code && !searchTerms.includes(code)) searchTerms.push(code);
-    });
-
-    // Remove selected items from dialog before closing
-    if (selectedIndices.length < items.length) {
-      this.removeSelectedItemsFromDialog(selectedIndices);
-    }
-
-    // Close dialog with clone action
-    this.dialogRef?.close({
-      action: 'updateClonePrices',
-      invoiceItems,
-      matchedProducts: reindexedMatches,
-      searchTerms
-    });
   }
 
   // =============================================================

@@ -40,10 +40,6 @@
       <mat-icon>save</mat-icon>
       Cập nhật
     </button>
-    <button mat-button class="add-product-button" (click)="addProduct()" matTooltip="Thêm hàng hóa nội bộ (không sync KiotViet)">
-      <mat-icon>add_shopping_cart</mat-icon>
-      Thêm hàng clone
-    </button>
     <button mat-button class="add-original-button" (click)="addOriginalProduct()" matTooltip="Tạo hàng hóa mới trực tiếp trên KiotViet">
       <mat-icon>store</mat-icon>
       Thêm hàng KiotViet
@@ -108,11 +104,9 @@
     <ng-container *cdkVirtualFor="let group of productGroups; trackBy: trackByGroup">
       <app-product-row [product]="group.master" [childProducts]="group.children"
         [productColor]="getProductColor(group.master.Id)"
-        [pendingCloneSave]="pendingCloneSave"
         (productChange)="onProductChange($event, productGroups.indexOf(group))"
         (childrenChange)="onChildrenChange($event, productGroups.indexOf(group))"
-        (deleteProduct)="onDeleteProduct($event, productGroups.indexOf(group))"
-        (saveCloneClick)="saveCloneProducts()"></app-product-row>
+        (deleteProduct)="onDeleteProduct($event, productGroups.indexOf(group))"></app-product-row>
     </ng-container>
   </cdk-virtual-scroll-viewport>
 

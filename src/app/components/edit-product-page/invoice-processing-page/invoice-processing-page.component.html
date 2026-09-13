@@ -18,9 +18,6 @@
     <button class="tab-btn" [class.active]="activeTab === 'pdf'" (click)="switchTab('pdf')">
       <i class="fa-solid fa-file-pdf"></i> Upload PDF/Ảnh
     </button>
-    <button class="tab-btn" [class.active]="activeTab === 'clone_image'" (click)="switchTab('clone_image')">
-      <i class="fa-solid fa-clone"></i> Upload Clone
-    </button>
   </div>
 
   <!-- Top Section: Upload/Email + Info -->
@@ -167,48 +164,6 @@
           <input type="file" accept=".xml" (change)="onXmlFileSelected($event)" hidden>
           <i class="fa-solid fa-file-code"></i> Import XML
         </label>
-      </div>
-    </div>
-
-    <!-- Clone Image Tab -->
-    <div class="upload-section" *ngIf="activeTab === 'clone_image'">
-      <div class="dropzone" [class.drag-over]="isCloneDragOver" [class.has-file]="selectedCloneImageFile"
-        (dragover)="onCloneDragOver($event)" (dragleave)="onCloneDragLeave($event)" (drop)="onCloneDrop($event)">
-        <div class="dropzone-content" *ngIf="!selectedCloneImageFile">
-          <i class="fa-solid fa-image dropzone-icon"></i>
-          <label class="file-select-btn">
-            <input type="file" accept=".jpg,.jpeg,.png,.pdf" (change)="onCloneFileSelected($event)" hidden>
-            <span>Chọn Ảnh Clone</span>
-          </label>
-          <p class="dropzone-hint">Ảnh phiếu giao hàng/bảng giá (bỏ qua chữ viết tay)</p>
-        </div>
-        <div class="file-info" *ngIf="selectedCloneImageFile">
-          <i class="fa-solid fa-image file-icon"></i>
-          <span class="file-name">{{ selectedCloneImageFile.name }}</span>
-          <button class="remove-file-btn" (click)="clearCloneImage()">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      </div>
-      <!-- Stepper -->
-      <div class="stepper-section" *ngIf="processingSteps.length > 0 && isProcessing">
-        <div class="stepper-container">
-          <div *ngFor="let step of processingSteps; let last = last" class="step-item" [ngClass]="getStepClass(step)">
-            <div class="step-icon">
-              <mat-icon>{{ getStepIcon(step) }}</mat-icon>
-            </div>
-            <span class="step-label">{{ step.label }}</span>
-            <div class="step-connector" *ngIf="!last"></div>
-          </div>
-        </div>
-      </div>
-      <div class="action-row">
-        <button mat-raised-button color="primary" [disabled]="!selectedCloneImageFile || isProcessing"
-          (click)="processCloneImage()" class="process-btn">
-          <mat-spinner *ngIf="isProcessing" diameter="16"></mat-spinner>
-          <i class="fa-solid fa-wand-magic-sparkles" *ngIf="!isProcessing"></i>
-          <span>{{ isProcessing ? 'Đang đọc...' : 'Đọc Ảnh Clone' }}</span>
-        </button>
       </div>
     </div>
 
@@ -379,19 +334,12 @@
       <!-- Summary - Inline -->
       <div class="summary-section" [formGroup]="invoiceForm">
         <div class="action-buttons">
-          <button *ngIf="!isCloneMode" mat-raised-button color="primary" class="update-price-btn" (click)="updatePrices()"
+          <button mat-raised-button color="primary" class="update-price-btn" (click)="updatePrices()"
             [disabled]="isMatching || selectedItems.size === 0"
             matTooltip="{{ selectedItems.size === 0 ? 'Chọn sản phẩm để cập nhật' : 'Cập nhật ' + selectedItems.size + ' sản phẩm đã chọn' }}">
             <mat-spinner *ngIf="isMatching" diameter="16"></mat-spinner>
             <mat-icon *ngIf="!isMatching">system_update</mat-icon>
             {{ isMatching ? 'Đang tìm...' : 'Cập nhật (' + selectedItems.size + ')' }}
-          </button>
-          <button *ngIf="isCloneMode" mat-raised-button color="warn" class="update-price-btn" (click)="updateClonePrices()"
-            [disabled]="isMatching || selectedItems.size === 0"
-            matTooltip="{{ selectedItems.size === 0 ? 'Chọn sản phẩm để cập nhật' : 'Cập nhật ' + selectedItems.size + ' Clone đã chọn' }}">
-            <mat-spinner *ngIf="isMatching" diameter="16"></mat-spinner>
-            <mat-icon *ngIf="!isMatching">content_copy</mat-icon>
-            {{ isMatching ? 'Đang tìm...' : 'Cập nhật Clone (' + selectedItems.size + ')' }}
           </button>
           <!-- Save to Firestore button -->
           <button mat-raised-button color="accent" class="save-firestore-btn"

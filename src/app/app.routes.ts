@@ -7,7 +7,6 @@ import { PayrollPageComponent } from './components/payroll-page/payroll-page.com
 import { PromotionListPageComponent } from './components/promotion-list-page/promotion-list-page.component';
 import { DeliveryRoutePageComponent } from './components/delivery-route-page/delivery-route-page.component';
 import { LoginPageComponent } from './components/login-page/login-page.component';
-import { EditProductPageRefactoredComponent } from './components/edit-product-page/edit-product-page-refactored.component';
 import { CustomerPageComponent } from './components/customer-page/customer-page.component';
 import { authGuard, loginGuard } from './guards/auth.guard';
 
@@ -20,7 +19,6 @@ export const routes: Routes = [
   { path: 'attendance', component: AttendancePageComponent, canActivate: [authGuard] },
   { path: 'payroll', component: PayrollPageComponent, canActivate: [authGuard] },
   { path: 'promotions', component: PromotionListPageComponent, canActivate: [authGuard] },
-  { path: 'edit-products', component: EditProductPageRefactoredComponent, canActivate: [authGuard] },
   { path: 'customers', component: CustomerPageComponent, canActivate: [authGuard] },
   { path: '', redirectTo: '/orders', pathMatch: 'full' }
 ];

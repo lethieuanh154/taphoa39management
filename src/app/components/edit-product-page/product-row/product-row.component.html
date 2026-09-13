@@ -145,15 +145,7 @@
             type="button">
             <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
           </button>
-          <button class="clone-btn" *ngIf="!product.isClone" (click)="onCloneClick($event)" matTooltip="Clone sản phẩm" type="button">
-            <mat-icon>content_copy</mat-icon>
-          </button>
-          <button class="save-clone-btn" *ngIf="product.isClone && pendingCloneSave && product.Edited"
-            (click)="onSaveCloneClick($event)" matTooltip="Lưu cập nhật Clone" type="button"
-            style="color: #4CAF50;">
-            <mat-icon>save</mat-icon>
-          </button>
-          <button class="edit-btn" *ngIf="product.isClone && !(pendingCloneSave && product.Edited)"
+          <button class="edit-btn" *ngIf="product.isClone"
             (click)="onEditClick($event)" matTooltip="Chỉnh sửa sản phẩm" type="button">
             <mat-icon>edit</mat-icon>
           </button>
@@ -184,15 +176,7 @@
           <mat-icon [class.spinning]="isSyncing">sync</mat-icon>
           <span>Đồng bộ KiotViet</span>
         </button>
-        <button mat-menu-item *ngIf="!product.isClone" (click)="onCloneClick($event)">
-          <mat-icon>content_copy</mat-icon>
-          <span>Clone sản phẩm</span>
-        </button>
-        <button mat-menu-item *ngIf="product.isClone && pendingCloneSave && product.Edited" (click)="onSaveCloneClick($event)">
-          <mat-icon style="color: #4CAF50;">save</mat-icon>
-          <span style="color: #4CAF50;">Lưu Clone</span>
-        </button>
-        <button mat-menu-item *ngIf="product.isClone && !(pendingCloneSave && product.Edited)" (click)="onEditClick($event)">
+        <button mat-menu-item *ngIf="product.isClone" (click)="onEditClick($event)">
           <mat-icon>edit</mat-icon>
           <span>Chỉnh sửa</span>
         </button>

@@ -15,7 +15,7 @@ App này **copy code** từ `TapHoa39BanHang`, không share package. Fix một b
 
 | Vùng mirror | Mức trùng |
 |---|---|
-| `src/app/components/edit-product-page/**` | 51/58 file `.ts`/`.html` giống hệt byte-for-byte |
+| `src/app/components/edit-product-page/**` | 51/58 file `.ts`/`.html` giống hệt byte-for-byte — **route `/edit-products` đã gỡ khỏi Management, code giữ lại để mirror** |
 | `src/app/services/*.ts` | 23/37 file trùng tên giống hệt byte-for-byte |
 
 **Bắt buộc sau mỗi lần sửa vùng mirror:** kiểm tra file cùng đường dẫn ở BanHang, sửa luôn hoặc nói rõ lý do bỏ qua, rồi build cả hai app.
@@ -60,6 +60,8 @@ Doc chi tiết của `edit-product-page` nằm ở `TapHoa39BanHang/docs/compone
 | `/promotions` | PromotionListPageComponent | authGuard | Quản lý khuyến mãi |
 | `/customers` | CustomerPageComponent | authGuard | Danh mục khách hàng (kế toán) |
 | `/` | → redirect `/orders` | - | Mặc định |
+
+> **Đã gỡ:** `/edit-products` (EditProductPageRefactoredComponent). Route + nav item sidebar bị xóa khỏi `app.routes.ts` / `app.component.html`; folder `components/edit-product-page/**` **vẫn giữ nguyên** để không phá mirror với TapHoa39BanHang (bên đó route vẫn chạy). Muốn bật lại: thêm import + 1 dòng route + 1 nav item.
 
 ---
 
@@ -212,7 +214,7 @@ Bản copy từ `TapHoa39KeToan/src/app/components/customer-page/`. Quản lý h
 
 ### Mất session không được phá trang đang mở
 `app.component.html` dùng **một `<router-outlet>` duy nhất**, KHÔNG bọc trong `*ngIf="auth.isAuthenticated"`.
-Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → mỗi lần `authState` đổi là component đang hiển thị bị destroy/recreate, mất sạch state trong RAM (rõ nhất ở `/edit-products`: danh sách sản phẩm biến mất). Nay chỉ sidebar + chat-bubble bị toggle; việc điều hướng user chưa đăng nhập do `authGuard` lo.
+Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → mỗi lần `authState` đổi là component đang hiển thị bị destroy/recreate, mất sạch state trong RAM (rõ nhất ở `/edit-products` khi route đó còn: danh sách sản phẩm biến mất). Nay chỉ sidebar + chat-bubble bị toggle; việc điều hướng user chưa đăng nhập do `authGuard` lo.
 
 - `AuthService.clearSession()` (private): xoá token local + `signOut` + phát `authState`, KHÔNG gọi `/api/auth/logout`.
 - `AuthService.logout()` (public): revoke refresh token trên server rồi mới `clearSession()`.
@@ -220,7 +222,7 @@ Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → m�
 - `onAuthStateChanged` mất session đã thiết lập mà không phải do user bấm Đăng xuất → `emitTokenExpired('firebase')`. Cờ `suppressExpiryNotice` chặn báo nhầm khi logout chủ động.
 - `app.component.html` render **session banner** từ `TokenExpiredService.showExpiredDialog$` / `expiredMessage$` (nút "Đăng nhập lại" + đóng). Trước đó `emitTokenExpired()` không có UI nào → user bị đá về login không lời giải thích.
 
-### Khôi phục state trang Edit Product
+### Khôi phục state trang Edit Product *(route đã gỡ — code còn để mirror)*
 `edit-product-page-refactored.component.ts` snapshot `productGroups` / `searchTerm` / `activeQuery` / `pendingCloneSave` / `productColors` vào **sessionStorage** key `edit_product_page_state` (per-tab), khôi phục ở cuối `ngOnInit`. Giúp sống sót qua component re-create (auth flip, Chrome tab discard, reload).
 
 Snapshot **chỉ để vẽ tạm**: sessionStorage sống qua cả F5 lẫn hard reload, nên `OnHand`/`Cost`/`BasePrice` trong đó đóng băng tại thời điểm search — máy khác sửa tồn kho thì reload bao nhiêu lần cũng thấy số cũ. `restoreState()` gọi tiếp `refreshRestoredData()`: chạy lại `queryProducts()` / `searchProducts()` trên IndexedDB rồi group lại. Re-query rỗng → giữ snapshot. `pendingCloneSave` → re-apply `applyCloneDataToProductGroups()` (clone chưa lưu nằm ở localStorage).
@@ -422,7 +424,7 @@ Project sử dụng Angular 20 Standalone Components (không dùng NgModules tru
 
 ---
 
-## Edit Product Page - Product Row (Action Column)
+## Edit Product Page - Product Row (Action Column) *(route đã gỡ — code còn để mirror)*
 
 Cột "Thao tác" (desktop) gom các nút vào 1 icon (`more_horiz`); hover xổ ra flyout danh sách nút (CSS `.action-hover-wrapper` / `.action-flyout`). iPad vẫn dùng mat-menu.
 - **In mã vạch** — `onPrintBarcodeClick()` → `printBarcode()`: prompt số lượng (mặc định = tồn kho), mở window in tem bằng JsBarcode (CDN). Khớp format KiotViet `PrintBarCode2Label`/`Base2Label`: **trang tem 72×22mm chứa 2 tem (36mm/tem)**, CODE128 encode Mã hàng, nội dung Tên → barcode → mã số → giá + "VND".
@@ -430,7 +432,7 @@ Cột "Thao tác" (desktop) gom các nút vào 1 icon (`more_horiz`); hover xổ
 
 ---
 
-## Edit Product Page - KiotViet Nhập hàng (XML → phiếu nhập)
+## Edit Product Page - KiotViet Nhập hàng (XML → phiếu nhập) *(route đã gỡ — code còn để mirror)*
 
 Nút toolbar **"Kiotviet Nhập hàng"** (`openKiotVietPurchaseOrder()`) → `KiotVietPurchaseOrderDialogComponent` (`components/edit-product-page/kiotviet-purchase-order-dialog/`). Mục đích: tạo phiếu nhập tự động thay vì gõ tay trên web KiotViet. **Giống hệt bản TapHoa39BanHang.**
 

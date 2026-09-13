@@ -73,6 +73,12 @@ export class CloneProductDialogComponent implements OnInit {
   childProducts: EditedProduct[] = [];
   existingClones: EditedProduct[] = [];  // Clone đã tồn tại
 
+  // Child clone cũ đang trỏ vào master clone KHÁC (thường là master clone đã bị xoá).
+  // generateCloneProducts() phát hiện, save() re-link sang master clone hiện tại.
+  private orphanChildClonesToRelink: EditedProduct[] = [];
+  // Id master clone của lần generate gần nhất (clone cũ hoặc vừa tạo).
+  private lastMasterCloneId = 0;
+
   // Clone configuration
   cloneOnHandNV: number = 0;
 
@@ -261,6 +267,8 @@ export class CloneProductDialogComponent implements OnInit {
    * CHỈ tạo những clone CHƯA tồn tại (dựa vào CloneSourceId)
    */
   generateCloneProducts(): ClonedProduct[] {
+    this.orphanChildClonesToRelink = [];
+    this.lastMasterCloneId = 0;
     if (!this.masterProduct) return [];
 
     console.log('🔄 [generateCloneProducts] Starting...');
@@ -321,6 +329,8 @@ export class CloneProductDialogComponent implements OnInit {
       console.log(`⏭️ Bỏ qua master clone - đã tồn tại (CloneSourceId: ${this.masterProduct.Id}, ExistingId: ${existingMasterClone.Id})`);
     }
 
+    this.lastMasterCloneId = masterCloneId;
+
     // Clone child products - CHỈ những child chưa có clone
     for (const child of this.childProducts) {
       const existingChildClone = this.findExistingClone(child.Id, child.Code);
@@ -328,6 +338,14 @@ export class CloneProductDialogComponent implements OnInit {
       // Bỏ qua nếu clone đã tồn tại
       if (existingChildClone) {
         console.log(`⏭️ Bỏ qua child clone - đã tồn tại (CloneSourceId: ${child.Id}, ExistingId: ${existingChildClone.Id})`);
+        // Child clone cũ có thể còn trỏ vào master clone đã bị xoá → nó không bao giờ vào
+        // chung group với master clone hiện tại: search chỉ ra mỗi master, và main-page mất
+        // ConversionValue của các đơn vị (mọi đơn vị rơi về CV=1). Đánh dấu để save() re-link.
+        const currentMasterUnitId = Number((existingChildClone as any).MasterUnitId);
+        if (Number(existingChildClone.Id) !== masterCloneId && currentMasterUnitId !== masterCloneId) {
+          console.warn(`🔗 Child clone ${existingChildClone.Id} đang trỏ MasterUnitId=${currentMasterUnitId} → sẽ re-link về ${masterCloneId}`);
+          this.orphanChildClonesToRelink.push(existingChildClone);
+        }
         continue;
       }
 
@@ -401,6 +419,44 @@ export class CloneProductDialogComponent implements OnInit {
     return true;
   }
 
+  /**
+   * Trỏ MasterUnitId của các child clone mồ côi về master clone hiện tại.
+   *
+   * Bối cảnh: khi master clone bị xoá mà child clone còn lại, lần clone sau tạo master clone
+   * MỚI nhưng child cũ vẫn giữ MasterUnitId của master đã chết → group chỉ còn 1 sản phẩm.
+   * PHẢI gọi SAU khi master clone đã nằm trong Firestore, nếu không lại tạo tham chiếu chết.
+   *
+   * @returns số child clone đã re-link
+   */
+  private async relinkOrphanChildClones(): Promise<number> {
+    if (!this.lastMasterCloneId || this.orphanChildClonesToRelink.length === 0) return 0;
+
+    const masterCloneId = this.lastMasterCloneId;
+    const updates = this.orphanChildClonesToRelink.map(c => ({
+      Id: Number(c.Id),
+      MasterUnitId: masterCloneId
+    }));
+
+    console.log(`🔗 [CloneDialog] Re-link ${updates.length} child clone mồ côi → master clone ${masterCloneId}`, updates);
+
+    // Firestore trước: đây mới là nguồn sự thật, IndexedDB chỉ là cache.
+    await this.productService.updateProducts(updates as any);
+
+    for (const child of this.orphanChildClonesToRelink) {
+      try {
+        await this.productService.updateProductFromIndexedDB({
+          ...(child as any),
+          MasterUnitId: masterCloneId
+        });
+      } catch (dbError) {
+        console.warn(`⚠️ [CloneDialog] Không cập nhật được IndexedDB cho child clone ${child.Id}:`, dbError);
+      }
+    }
+
+    this.orphanChildClonesToRelink = [];
+    return updates.length;
+  }
+
   async save(): Promise<void> {
     if (this.saving) {
       return; // Prevent multiple clicks
@@ -434,6 +490,21 @@ export class CloneProductDialogComponent implements OnInit {
       }
 
       if (products.length === 0) {
+        // Master clone đã có sẵn nhưng child cũ trỏ sai master → không tạo gì cả nhưng
+        // vẫn phải sửa liên kết, nếu không group vẫn hỏng.
+        const relinkedOnly = await this.relinkOrphanChildClones();
+        if (relinkedOnly > 0) {
+          alert(`Đã nối lại ${relinkedOnly} đơn vị clone bị tách khỏi sản phẩm gốc.`);
+          this.dialogRef.close({
+            saved: true,
+            products: [],
+            count: 0,
+            relinked: relinkedOnly,
+            skipSync: true
+          });
+          return;
+        }
+
         // Kiểm tra nếu tất cả đã được clone → thông báo và đóng dialog
         if (this.allProductsAlreadyCloned()) {
           alert('Tất cả sản phẩm đã được clone trước đó. Không cần tạo mới.');
@@ -465,11 +536,22 @@ export class CloneProductDialogComponent implements OnInit {
         // Don't throw, Firebase already saved
       }
 
-      // Step 3: Close dialog with result
+      // Step 3: Re-link child clone mồ côi sang master clone vừa tạo.
+      // Chạy sau addProducts() để master clone chắc chắn đã tồn tại trên Firestore.
+      let relinked = 0;
+      try {
+        relinked = await this.relinkOrphanChildClones();
+      } catch (relinkError) {
+        console.error('❌ [CloneDialog] Re-link child clone thất bại:', relinkError);
+        alert('Đã tạo clone nhưng chưa nối được các đơn vị cũ. Bấm Clone lại để thử nối tiếp.');
+      }
+
+      // Step 4: Close dialog with result
       this.dialogRef.close({
         saved: true,
         products: products,
         count: products.length,
+        relinked,
         result: result,
         skipSync: true
       });

@@ -12,7 +12,6 @@ import { ChildUnitsListComponent } from '../child-units-list/child-units-list.co
 import { QuickCalcDialogComponent } from '../quick-calc-dialog/quick-calc-dialog.component';
 import { DeleteConfirmDialogComponent } from '../delete-confirm-dialog/delete-confirm-dialog.component';
 import { EditProductDialogComponent } from '../edit-product-dialog/edit-product-dialog.component';
-import { CloneProductDialogComponent } from '../clone-product-dialog/clone-product-dialog.component';
 import { ProductHistoryDialogComponent } from '../product-history-dialog/product-history-dialog.component';
 import { ProductInfoDialogComponent } from '../product-info-dialog/product-info-dialog.component';
 import { ProductService } from '../../../services/product.service';
@@ -27,12 +26,6 @@ export interface EditProductEvent {
   product: EditedProduct;
   childProducts: EditedProduct[];
   updatedProducts: any[];
-}
-
-export interface CloneProductEvent {
-  product: EditedProduct;
-  childProducts: EditedProduct[];
-  clonedProducts: any[];
 }
 
 export interface SyncProductEvent {
@@ -63,15 +56,11 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() childProducts: EditedProduct[] = [];
   @Input() productColor: string = '#ffffff';
 
-  @Input() pendingCloneSave = false;
-
   @Output() productChange = new EventEmitter<EditedProduct>();
   @Output() childrenChange = new EventEmitter<EditedProduct[]>();
   @Output() deleteProduct = new EventEmitter<DeleteProductEvent>();
   @Output() editProduct = new EventEmitter<EditProductEvent>();
-  @Output() cloneProduct = new EventEmitter<CloneProductEvent>();
   @Output() syncProduct = new EventEmitter<SyncProductEvent>();
-  @Output() saveCloneClick = new EventEmitter<void>();
 
   // Sync state
   isSyncing = false;
@@ -913,15 +902,6 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   /**
-   * Handle save clone button click - emit save event to parent
-   */
-  onSaveCloneClick(event: MouseEvent) {
-    event.stopPropagation();
-    event.preventDefault();
-    this.saveCloneClick.emit();
-  }
-
-  /**
    * Handle print barcode button click - open barcode label print window.
    * Renders a barcode label (Name + barcode + price) via JsBarcode and prints.
    */
@@ -1099,123 +1079,6 @@ export class ProductRowComponent implements OnInit, OnChanges, AfterViewInit {
     dialogRef.afterClosed().subscribe(() => {
       this.isDialogOpen = false;
     });
-  }
-
-  /**
-   * Chuẩn nhận diện clone của dự án: isClone===true OR (OnHandNV>0 && OnHand===0)
-   * OR KiotVietSync===false. Chỉ đọc mỗi `isClone` sẽ bỏ sót clone cũ thiếu field,
-   * guard tưởng chưa có clone và tạo thêm một bộ đơn vị trùng.
-   */
-  private isCloneRecord(p: any): boolean {
-    if (p?.isClone === true) return true;
-    if (typeof p?.isClone === 'string' && p.isClone.toLowerCase() === 'true') return true;
-    if (p?.KiotVietSync === false) return true;
-    const onHandNV = Number(p?.OnHandNV) || 0;
-    const onHand = Number(p?.OnHand) || 0;
-    return onHandNV > 0 && onHand === 0;
-  }
-
-  /**
-   * Clone có thuộc SP gốc đang thao tác không. Khớp BẤT KỲ khóa nào cũng tính là "đã có
-   * clone" — thà nhận dư còn hơn tạo trùng: clone giữ nguyên Code của bản gốc nên Code
-   * là khóa cuối cùng bám được khi CloneSourceId/CloneMasterSourceId bị thiếu.
-   */
-  private cloneBelongsToProduct(p: any, originalIds: Set<string>, originalCodes: Set<string>): boolean {
-    if (p?.CloneSourceId && originalIds.has(String(p.CloneSourceId))) return true;
-    if (p?.CloneMasterSourceId && String(p.CloneMasterSourceId) === String(this.product.Id)) return true;
-    return !!p?.Code && originalCodes.has(p.Code);
-  }
-
-  /**
-   * Handle clone button click - open clone dialog
-   * Only shown for non-clone products (original KiotViet products)
-   * Lấy danh sách existingClones từ IndexedDB để tránh tạo duplicate
-   */
-  async onCloneClick(event: MouseEvent) {
-    event.stopPropagation();
-    event.preventDefault();
-
-    if (this.isDialogOpen) {
-      return;
-    }
-
-    this.isDialogOpen = true;
-
-    try {
-      // Lấy tất cả products từ IndexedDB để tìm existing clones
-      const allProducts = await this.productService.getAllProductsFromIndexedDB();
-
-      // Collect all original product IDs (master + children) for lookup
-      const originalProductIds = new Set<string>();
-      originalProductIds.add(String(this.product.Id));
-      this.childProducts?.forEach(c => originalProductIds.add(String(c.Id)));
-
-      // Tìm các clone đã tồn tại cho product này và các children.
-      // Clone cũ có thể thiếu CloneSourceId / CloneMasterSourceId / isClone, nên phải
-      // dò theo NHIỀU khóa — guard rỗng là nguyên nhân sinh ra bộ clone thứ 2 trùng đơn vị.
-      const originalCodes = new Set<string>();
-      if (this.product.Code) originalCodes.add(this.product.Code);
-      this.childProducts?.forEach(c => { if (c.Code) originalCodes.add(c.Code); });
-
-      const existingClones = allProducts.filter((p: any) =>
-        this.isCloneRecord(p) && this.cloneBelongsToProduct(p, originalProductIds, originalCodes)
-      );
-
-      // Master clone: CloneSourceId trỏ về master gốc, hoặc (clone legacy) Code trùng master.
-      const masterCloneExists = existingClones.some((c: any) =>
-        String(c.CloneSourceId) === String(this.product.Id) || c.Code === this.product.Code
-      );
-
-      // KHÔNG xóa clone "lạ" khỏi IndexedDB nữa: xóa local không xóa Firestore, lần sync
-      // sau nó quay lại và trong lúc đó guard tưởng chưa có clone → tạo trùng bộ mới.
-      // Cũng KHÔNG clear danh sách khi thiếu master clone: giữ child cũ để không nhân đôi child.
-      if (existingClones.length > 0 && !masterCloneExists) {
-        console.warn(`⚠️ [onCloneClick] Có ${existingClones.length} child clone nhưng thiếu master clone — chỉ tạo bù master, giữ nguyên child cũ.`);
-      }
-
-      console.log(`📋 Found ${existingClones.length} valid existing clones for product ${this.product.Id}`);
-      console.log(`📋 [onCloneClick] Original product IDs:`, Array.from(originalProductIds));
-      console.log(`📋 [onCloneClick] Master product:`, this.product.Id, this.product.Code, this.product.Name);
-      console.log(`📋 [onCloneClick] Child products count:`, this.childProducts?.length || 0);
-      console.log(`📋 [onCloneClick] Child products:`, this.childProducts?.map(c => ({ Id: c.Id, Code: c.Code, Unit: c.Unit })));
-      if (existingClones.length > 0) {
-        console.log(`📋 [onCloneClick] Existing clones:`, existingClones.map((c: any) => ({
-          Id: c.Id,
-          CloneSourceId: c.CloneSourceId,
-          Code: c.Code,
-          OnHandNV: c.OnHandNV
-        })));
-      }
-
-      const dialogRef = this.dialog.open(CloneProductDialogComponent, {
-        width: '600px',
-        maxHeight: '90vh',
-        data: {
-          product: this.product,
-          childProducts: this.childProducts,
-          existingClones: existingClones  // Truyền danh sách clone đã tồn tại
-        },
-        disableClose: false
-      });
-
-      dialogRef.afterClosed().subscribe(result => {
-        this.isDialogOpen = false;
-
-        if (result && result.saved) {
-          console.log('✅ Clone products created:', result.products?.length || 0);
-
-          // Emit clone event to parent component
-          this.cloneProduct.emit({
-            product: this.product,
-            childProducts: this.childProducts,
-            clonedProducts: result.products || []
-          });
-        }
-      });
-    } catch (error) {
-      console.error('❌ Error loading existing clones:', error);
-      this.isDialogOpen = false;
-    }
   }
 
   /**
