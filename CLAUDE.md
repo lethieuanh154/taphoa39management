@@ -6,7 +6,8 @@ HR & order management. Angular 20, Material 20, Firebase Auth (Google Sign-In).
 `/login` | `/orders` (default) | `/employees` | `/work-schedule` | `/attendance` | `/payroll` | `/promotions` | `/customers`
 
 ## Critical Rules
-- **CODE MIRROR:** `components/edit-product-page/**` (51/58 file) + `services/*.ts` (23/37 file) là bản copy y hệt của TapHoa39BanHang. Route `/edit-products` **đã gỡ khỏi Management** nhưng code vẫn giữ để mirror — sửa vẫn phải đồng bộ 2 bên. Sửa ở đây → PHẢI kiểm tra file cùng đường dẫn bên BanHang, sửa luôn hoặc nói rõ lý do bỏ qua, rồi build cả 2 app. Xem mục MIRRORED CODE trong CLAUDE.md gốc.
+- **CODE MIRROR:** `services/*.ts` (23/37 file) là bản copy y hệt của TapHoa39BanHang. Sửa ở đây → PHẢI kiểm tra file cùng tên bên BanHang, sửa luôn hoặc nói rõ lý do bỏ qua, rồi build cả 2 app. Xem mục MIRRORED CODE trong CLAUDE.md gốc.
+- **KHÔNG có trang quản lý hàng hóa:** `components/edit-product-page/**` đã **xóa hẳn** (2026-09-13) — trước đó là code chết, không có route. Quản lý hàng hóa chỉ nằm ở TapHoa39BanHang. Đừng port lại trừ khi có yêu cầu rõ ràng.
 - Auth: Google Sign-In → email whitelist → Flask token → KiotViet token. Auto-refresh 2 min.
 - IndexedDB-first: load cache → sync API background
 - Real-time orders: Firestore onSnapshot (`orderNotifications`, project `taphoa39khachhang`)

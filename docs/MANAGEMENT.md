@@ -15,22 +15,17 @@ App này **copy code** từ `TapHoa39BanHang`, không share package. Fix một b
 
 | Vùng mirror | Mức trùng |
 |---|---|
-| `src/app/components/edit-product-page/**` | 51/58 file `.ts`/`.html` giống hệt byte-for-byte — **route `/edit-products` đã gỡ khỏi Management, code giữ lại để mirror** |
 | `src/app/services/*.ts` | 23/37 file trùng tên giống hệt byte-for-byte |
+
+> `components/edit-product-page/**` **đã xóa hẳn khỏi Management (2026-09-13)** — không còn vùng mirror. Bản duy nhất nằm ở TapHoa39BanHang.
 
 **Bắt buộc sau mỗi lần sửa vùng mirror:** kiểm tra file cùng đường dẫn ở BanHang, sửa luôn hoặc nói rõ lý do bỏ qua, rồi build cả hai app.
 
-```bash
-diff -rq --exclude='*.css' --exclude='*.scss' \
-  TapHoa39BanHang/src/app/components/edit-product-page \
-  TapHoa39Management/src/app/components/edit-product-page
-```
-
-**Đã diverge có chủ đích — KHÔNG copy mù:** `auth.service.ts`, `indexed-db.service.ts` (BanHang có handler `onclose`), `product.service.ts`, `token-expired.service.ts`, `invoice.service.ts`, `order.service.ts`, `kiotviet.service.ts`, `merged-products.service.ts`, và trong `edit-product-page/`: `edit-product-page-refactored.component.ts` + `.html`, `services/product-edit.service.ts`, `invoice-processing-page.component.ts`, `match-review-dialog.component.ts`, `edit-product-dialog/`, `product-info-dialog/`.
+**Đã diverge có chủ đích — KHÔNG copy mù:** `auth.service.ts`, `indexed-db.service.ts` (BanHang có handler `onclose`), `product.service.ts`, `token-expired.service.ts`, `invoice.service.ts`, `order.service.ts`, `kiotviet.service.ts`, `merged-products.service.ts`.
 
 **KHÔNG mirror:** `app.component.*` (Management có sidebar + auth `*ngIf`, BanHang chỉ `<router-outlet>` trần). Hai app **khác origin** → SalesDB / localStorage / sessionStorage **tách biệt hoàn toàn**; code phải đồng bộ nhưng không cần deploy đồng thời.
 
-Doc chi tiết của `edit-product-page` nằm ở `TapHoa39BanHang/docs/components/edit-product-page/EDIT-PRODUCT-PAGE.md`. Rule đầy đủ: mục **MIRRORED CODE** trong `CLAUDE.md` thư mục gốc.
+Rule đầy đủ: mục **MIRRORED CODE** trong `CLAUDE.md` thư mục gốc.
 
 ---
 
@@ -61,7 +56,7 @@ Doc chi tiết của `edit-product-page` nằm ở `TapHoa39BanHang/docs/compone
 | `/customers` | CustomerPageComponent | authGuard | Danh mục khách hàng (kế toán) |
 | `/` | → redirect `/orders` | - | Mặc định |
 
-> **Đã gỡ:** `/edit-products` (EditProductPageRefactoredComponent). Route + nav item sidebar bị xóa khỏi `app.routes.ts` / `app.component.html`; folder `components/edit-product-page/**` **vẫn giữ nguyên** để không phá mirror với TapHoa39BanHang (bên đó route vẫn chạy). Muốn bật lại: thêm import + 1 dòng route + 1 nav item.
+> **Đã xóa hẳn:** `/edit-products` (EditProductPageRefactoredComponent). Route + nav item gỡ trước đó; **toàn bộ folder `components/edit-product-page/` (73 file) xóa ngày 2026-09-13** — code chết, không route nào trỏ tới, tree-shake đã loại khỏi bundle (main.js không đổi kích thước sau khi xóa). Quản lý hàng hóa nằm ở **TapHoa39BanHang**. Muốn bật lại phải port nguyên folder từ BanHang.
 
 ---
 
@@ -214,24 +209,13 @@ Bản copy từ `TapHoa39KeToan/src/app/components/customer-page/`. Quản lý h
 
 ### Mất session không được phá trang đang mở
 `app.component.html` dùng **một `<router-outlet>` duy nhất**, KHÔNG bọc trong `*ngIf="auth.isAuthenticated"`.
-Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → mỗi lần `authState` đổi là component đang hiển thị bị destroy/recreate, mất sạch state trong RAM (rõ nhất ở `/edit-products` khi route đó còn: danh sách sản phẩm biến mất). Nay chỉ sidebar + chat-bubble bị toggle; việc điều hướng user chưa đăng nhập do `authGuard` lo.
+Trước đây có 2 outlet nằm trong 2 nhánh `*ngIf` đối nghịch → mỗi lần `authState` đổi là component đang hiển thị bị destroy/recreate, mất sạch state trong RAM (rõ nhất ở `/edit-products` khi trang đó còn tồn tại: danh sách sản phẩm biến mất). Nay chỉ sidebar + chat-bubble bị toggle; việc điều hướng user chưa đăng nhập do `authGuard` lo.
 
 - `AuthService.clearSession()` (private): xoá token local + `signOut` + phát `authState`, KHÔNG gọi `/api/auth/logout`.
 - `AuthService.logout()` (public): revoke refresh token trên server rồi mới `clearSession()`.
 - `_doRefresh` gặp 401 → `clearSession()` + `TokenExpiredService.emitTokenExpired('refresh')` (không revoke lại token đã invalid).
 - `onAuthStateChanged` mất session đã thiết lập mà không phải do user bấm Đăng xuất → `emitTokenExpired('firebase')`. Cờ `suppressExpiryNotice` chặn báo nhầm khi logout chủ động.
 - `app.component.html` render **session banner** từ `TokenExpiredService.showExpiredDialog$` / `expiredMessage$` (nút "Đăng nhập lại" + đóng). Trước đó `emitTokenExpired()` không có UI nào → user bị đá về login không lời giải thích.
-
-### Khôi phục state trang Edit Product *(route đã gỡ — code còn để mirror)*
-`edit-product-page-refactored.component.ts` snapshot `productGroups` / `searchTerm` / `activeQuery` / `pendingCloneSave` / `productColors` vào **sessionStorage** key `edit_product_page_state` (per-tab), khôi phục ở cuối `ngOnInit`. Giúp sống sót qua component re-create (auth flip, Chrome tab discard, reload).
-
-Snapshot **chỉ để vẽ tạm**: sessionStorage sống qua cả F5 lẫn hard reload, nên `OnHand`/`Cost`/`BasePrice` trong đó đóng băng tại thời điểm search — máy khác sửa tồn kho thì reload bao nhiêu lần cũng thấy số cũ. `restoreState()` gọi tiếp `refreshRestoredData()`: chạy lại `queryProducts()` / `searchProducts()` trên IndexedDB rồi group lại. Re-query rỗng → giữ snapshot. `pendingCloneSave` → re-apply `applyCloneDataToProductGroups()` (clone chưa lưu nằm ở localStorage).
-
-`productGroups` có **3 nguồn gốc**: query builder (`activeQuery`), text search/barcode (`searchTerm`), và **hóa đơn AI** (`lastSearchTerms` — union nhiều term, luồng này KHÔNG set `searchTerm`). `refreshRestoredData()` phải tái tạo đúng nguồn, nếu không SP của hóa đơn bị thay bằng kết quả của một `searchTerm` cũ còn sót → user mất hết dòng đang nhập số lượng. `lastSearchTerms` được persist vào snapshot và clear ở mọi luồng search/query/clear khác.
-
-Realtime có **2 kênh**: `setupCrossTabSync()` (BroadcastChannel — chỉ tab khác cùng browser) và `setupRealtimeSync()` (`ProductService.productOnHandUpdated$` — WebSocket, **giữa các máy**). Cả hai đổ về `patchProductGroups()`, patch tại chỗ và **bỏ qua row `Edited === true`** để không nuốt giá trị user đang nhập.
-
-`cleanOldEditingData()` KHÔNG còn xoá toàn bộ `editing_childProduct_*` — localStorage dùng chung giữa các tab nên xoá hết sẽ mất dữ liệu đang chờ lưu của tab khác. Nay dùng TTL 12h, theo dõi qua index `edit_page_editing_meta` (map key → thời điểm nhìn thấy lần đầu; key lạ được coi là mới).
 
 ---
 
@@ -422,28 +406,3 @@ Project sử dụng Angular 20 Standalone Components (không dùng NgModules tru
 | `quanlysongminh` | Auth + Firestore data chính (shared với TapHoa39BanHang) |
 | `taphoa39khachhang` | Real-time order notifications (`orderNotifications` collection) |
 
----
-
-## Edit Product Page - Product Row (Action Column) *(route đã gỡ — code còn để mirror)*
-
-Cột "Thao tác" (desktop) gom các nút vào 1 icon (`more_horiz`); hover xổ ra flyout danh sách nút (CSS `.action-hover-wrapper` / `.action-flyout`). iPad vẫn dùng mat-menu.
-- **In mã vạch** — `onPrintBarcodeClick()` → `printBarcode()`: prompt số lượng (mặc định = tồn kho), mở window in tem bằng JsBarcode (CDN). Khớp format KiotViet `PrintBarCode2Label`/`Base2Label`: **trang tem 72×22mm chứa 2 tem (36mm/tem)**, CODE128 encode Mã hàng, nội dung Tên → barcode → mã số → giá + "VND".
-- Các nút khác: Sync (KV), Clone (KV), Edit/History (Clone), Bỏ khỏi danh sách, Xóa.
-
----
-
-## Edit Product Page - KiotViet Nhập hàng (XML → phiếu nhập) *(route đã gỡ — code còn để mirror)*
-
-Nút toolbar **"Kiotviet Nhập hàng"** (`openKiotVietPurchaseOrder()`) → `KiotVietPurchaseOrderDialogComponent` (`components/edit-product-page/kiotviet-purchase-order-dialog/`). Mục đích: tạo phiếu nhập tự động thay vì gõ tay trên web KiotViet. **Giống hệt bản TapHoa39BanHang.**
-
-**Flow:** Import XML hóa đơn → BE `/v1/parse-xml` → auto-match SP + NCC qua KiotViet autocomplete → review candidate → bảng data → `POST /api/purchaseOrders`.
-
-**Bảng:** STT | Mã hàng | Tên hàng | ĐVT | Số lượng | Đơn giá | Giảm giá | Thành tiền (SL/ĐG/CK sửa được, `Thành tiền = SL × ĐG − CK`).
-
-**Match SP (theo tên + ĐƠN VỊ):** autocomplete KiotViet trả mỗi đơn vị 1 row cùng tên → `pickBestMatch` ưu tiên row khớp ĐVT hóa đơn (tránh nhập nhầm đơn vị gốc, vd "thùng" → "ly"). Auto-nhận khi tên trùng 100% VÀ đúng đơn vị, HOẶC trùng lựa chọn user đã ghi nhớ (localStorage `kvPurchaseOrderMatches`, key = tên+đơn-vị); còn lại mở `PurchaseMatchReviewDialogComponent` (candidate hiện tag đơn vị, cảnh báo khi chọn sai đơn vị, % giống tô màu, ô tìm thủ công, option bỏ qua). Lựa chọn user lưu localStorage → lần import sau tự khôi phục.
-
-**2 nút submit:** "Lưu tạm" (`Complete: false`) / "Hoàn thành" (`Complete: true`) — chỉ khác field `Complete` của payload; disable khi còn dòng chưa khớp SP. Lỗi KiotViet (`ResponseStatus.Message`) hiện banner đỏ, dialog giữ nguyên dữ liệu để gửi lại.
-
-**Cache nháp (localStorage `kvPurchaseOrderDraft`):** state sau import (lines + SP + NCC + số HĐ) lưu tự động → đóng/mở lại dialog tự khôi phục (badge "Khôi phục từ lần trước"), không cần import lại. Nút "Nhập mới" xóa nháp; tạo phiếu thành công tự xóa. Fetch KiotViet có retry lỗi mạng (3 lần, backoff) + chặn import chồng nhau.
-
-**Services:** `KiotVietPurchaseOrderService` (`services/kiotviet-purchase-order.service.ts`) + 3 method mới trong `KiotvietService`: `autocompletePurchaseProducts()`, `autocompleteSuppliers()`, `createPurchaseOrder()`.
