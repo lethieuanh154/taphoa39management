@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ViewChild, ViewEncapsulation } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { OrderService } from '../../services/order.service';
+import { ReservationService } from '../../services/reservation.service';
 import { TimeZoneService } from '../../services/time-zone.service';
 import { VietnameseService } from '../../services/vietnamese.service';
 import { Router } from '@angular/router';
@@ -68,6 +69,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     private dateAdapter: DateAdapter<Date>,
     private printService: PrintService,
     private router: Router,
+    private reservationService: ReservationService,
   ) {
     this.dateAdapter.setLocale('vi-VN');
   }
@@ -631,6 +633,9 @@ export class OrderPageComponent implements OnInit, OnDestroy {
             this.allOrders[orderIndex].status = 'canceled';
             this.updateFilteredOrders();
           }
+
+          // Nha hang da giu cho don nay (khong dung toi OnHand - xem docs/RESERVATION.md)
+          await this.reservationService.release(order.id, 'canceled');
 
           console.log(`✅ Order ${order.id} has been canceled`);
         } catch (error) {

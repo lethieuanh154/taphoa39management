@@ -8,6 +8,7 @@ import { PromotionListPageComponent } from './components/promotion-list-page/pro
 import { DeliveryRoutePageComponent } from './components/delivery-route-page/delivery-route-page.component';
 import { LoginPageComponent } from './components/login-page/login-page.component';
 import { CustomerPageComponent } from './components/customer-page/customer-page.component';
+import { ReservedProductsPageComponent } from './components/reserved-products-page/reserved-products-page.component';
 import { authGuard, loginGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -20,5 +21,6 @@ export const routes: Routes = [
   { path: 'payroll', component: PayrollPageComponent, canActivate: [authGuard] },
   { path: 'promotions', component: PromotionListPageComponent, canActivate: [authGuard] },
   { path: 'customers', component: CustomerPageComponent, canActivate: [authGuard] },
+  { path: 'reserved-products', component: ReservedProductsPageComponent, canActivate: [authGuard] },
   { path: '', redirectTo: '/orders', pathMatch: 'full' }
 ];

@@ -1,0 +1,114 @@
+<div class="reserved-page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>
+        <mat-icon>inventory_2</mat-icon>
+        Hàng đang giữ cho đơn đặt
+      </h1>
+      <p class="subtitle">
+        Đơn từ app Đặt hàng giữ chỗ tồn kho trong 24h. Hết hạn thì tự nhả và đơn chuyển sang “hết hạn”.
+      </p>
+    </div>
+
+    <div class="actions">
+      <button mat-stroked-button (click)="load()" [disabled]="isLoading">
+        <mat-icon>refresh</mat-icon>
+        Làm mới
+      </button>
+      <button mat-flat-button color="warn" (click)="expireOverdue()" [disabled]="isExpiring"
+              matTooltip="Giải phóng hàng của các đơn đã quá 24h">
+        <mat-icon>timer_off</mat-icon>
+        {{ isExpiring ? 'Đang dọn...' : 'Dọn đơn quá hạn' }}
+      </button>
+    </div>
+  </header>
+
+  <div class="summary" *ngIf="!isLoading && !errorMessage">
+    <div class="stat">
+      <span class="stat-value">{{ filtered.length }}</span>
+      <span class="stat-label">mặt hàng</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">{{ totalQuantity }}</span>
+      <span class="stat-label">đơn vị đang giữ</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">{{ totalOrders }}</span>
+      <span class="stat-label">đơn đặt</span>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <mat-icon>search</mat-icon>
+    <input
+      type="text"
+      placeholder="Tìm theo tên hàng, mã hàng, tên khách, SĐT hoặc mã đơn..."
+      [(ngModel)]="searchTerm"
+      (ngModelChange)="applyFilter()"
+    />
+    <button class="clear-btn" *ngIf="searchTerm" (click)="searchTerm = ''; applyFilter()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="state-box" *ngIf="isLoading">
+    <mat-icon class="spin">progress_activity</mat-icon>
+    Đang tải...
+  </div>
+
+  <div class="state-box error" *ngIf="errorMessage && !isLoading">
+    <mat-icon>error_outline</mat-icon>
+    {{ errorMessage }}
+  </div>
+
+  <div class="state-box empty" *ngIf="!isLoading && !errorMessage && filtered.length === 0">
+    <mat-icon>check_circle</mat-icon>
+    {{ searchTerm ? 'Không tìm thấy mặt hàng phù hợp.' : 'Hiện không có mặt hàng nào đang được giữ.' }}
+  </div>
+
+  <div class="product-list" *ngIf="!isLoading && !errorMessage && filtered.length > 0">
+    <div
+      class="product-row"
+      *ngFor="let p of filtered; trackBy: trackByProduct"
+      [class.urgent]="hasUrgentOrder(p)"
+    >
+      <div class="product-main" (click)="toggleExpand(p.productId)">
+        <mat-icon class="chevron">
+          {{ expandedId === p.productId ? 'expand_more' : 'chevron_right' }}
+        </mat-icon>
+
+        <div class="product-info">
+          <div class="product-name">{{ p.name || '(không tên)' }}</div>
+          <div class="product-code">{{ p.code }}</div>
+        </div>
+
+        <div class="product-qty">
+          <span class="qty-value">{{ p.totalReserved }}</span>
+          <span class="qty-label">đang giữ</span>
+        </div>
+
+        <div class="product-orders">
+          {{ p.orders.length }} đơn
+        </div>
+      </div>
+
+      <div class="order-list" *ngIf="expandedId === p.productId">
+        <div
+          class="order-row"
+          *ngFor="let o of p.orders; trackBy: trackByOrder"
+          [class.soon]="isExpiringSoon(o.expiresAt)"
+          [class.expired]="isExpired(o.expiresAt)"
+        >
+          <div class="order-cell order-id">{{ o.orderId }}</div>
+          <div class="order-cell customer">
+            <div class="customer-name">{{ o.customerName || '(khách lẻ)' }}</div>
+            <div class="customer-phone">{{ o.customerPhone }}</div>
+          </div>
+          <div class="order-cell qty">SL: <strong>{{ o.quantity }}</strong></div>
+          <div class="order-cell time">Đặt: {{ formatTime(o.createdAt) }}</div>
+          <div class="order-cell remaining">{{ remainingLabel(o.expiresAt) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

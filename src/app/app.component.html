@@ -21,6 +21,11 @@
         <span class="nav-text" *ngIf="!sidebarCollapsed">Đơn hàng</span>
       </a>
 
+      <a class="nav-item" routerLink="/reserved-products" routerLinkActive="active">
+        <i class="fa-solid fa-box-open"></i>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Hàng đang giữ</span>
+      </a>
+
       <div class="nav-group">
         <div class="nav-item nav-group-header" (click)="showEmployeeSubmenu = !showEmployeeSubmenu"
           [class.active]="showEmployeeSubmenu">

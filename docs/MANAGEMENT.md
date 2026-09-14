@@ -406,3 +406,5 @@ Project sử dụng Angular 20 Standalone Components (không dùng NgModules tru
 | `quanlysongminh` | Auth + Firestore data chính (shared với TapHoa39BanHang) |
 | `taphoa39khachhang` | Real-time order notifications (`orderNotifications` collection) |
 
+## Hàng đang giữ cho đơn đặt
+Trang `/reserved-products` (sidebar "Hàng đang giữ") tổng hợp mặt hàng đang bị đơn DatHang giữ chỗ 24h. Hủy đơn ở trang Đơn hàng sẽ tự nhả hàng. Chi tiết: `docs/RESERVED-PRODUCTS.md`.
