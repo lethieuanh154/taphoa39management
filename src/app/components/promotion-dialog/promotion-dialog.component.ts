@@ -21,6 +21,7 @@ import { Promotion } from '../../models/promotion.model';
 import { PromotionService } from '../../services/promotion.service';
 import { environment } from '../../../environments/environment';
 import { IndexedDBService } from '../../services/indexed-db.service';
+import { ProductService } from '../../services/product.service';
 import { SALES_DB_NAME, SALES_DB_VERSION } from '../../services/sales-db.config';
 
 export interface PromotionDialogData {
@@ -106,6 +107,7 @@ export class PromotionDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: PromotionDialogData,
     private promotionService: PromotionService,
     private indexedDBService: IndexedDBService,
+    private productService: ProductService,
     private snackBar: MatSnackBar,
     private http: HttpClient
   ) {}
@@ -158,6 +160,14 @@ export class PromotionDialogComponent implements OnInit {
 
   private async loadProducts() {
     let products: any[] = [];
+
+    // Management khong con edit-product-page de nap product -> tu sync truoc khi doc IndexedDB
+    // (lan dau: full; cac lan sau: chi /products/modified-since)
+    try {
+      await this.productService.incrementalSyncFromFirebase();
+    } catch (e) {
+      console.warn('Sync products failed, using cached IndexedDB:', e);
+    }
 
     // Try IndexedDB first
     try {

@@ -27,4 +27,5 @@ export interface Product {
   OrderTemplate: string;
   Tax?: number | string;  // ✅ Thuế suất: 0, 5, 8, 10 (number) hoặc "KCT", "KKKNT" (string, không chịu thuế)
   CloneSourceId?: number | string;  // ✅ ID của product gốc (cho clones)
+  ProductType?: number;  // ✅ KiotViet: 1=hàng hoá, 2=combo, 3=DỊCH VỤ (không tồn kho). Xem shared/product-type.ts
 }
