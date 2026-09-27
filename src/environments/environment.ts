@@ -25,12 +25,12 @@ export const environment = {
   },
   // Firebase Products project (for realtime product sync)
   firebaseProducts: {
-    apiKey: "AIzaSyAdigItMXqnXN5CO_qsjksOIktoMu-kMWQ",
-    authDomain: "products-d8de3.firebaseapp.com",
-    projectId: "products-d8de3",
-    storageBucket: "products-d8de3.firebasestorage.app",
-    messagingSenderId: "855109578134",
-    appId: "1:855109578134:web:4ba4a943c8a1ecc4da81b7",
-    measurementId: "G-F74VMRCCG2"
+    apiKey: "AIzaSyARZzMQuksFKhVV1nMaa-19Iga2LF_OfeA",
+    authDomain: "products-c22e0.firebaseapp.com",
+    projectId: "products-c22e0",
+    storageBucket: "products-c22e0.firebasestorage.app",
+    messagingSenderId: "556328285430",
+    appId: "1:556328285430:web:14ed41d91d325f1096a8d7",
+    measurementId: "G-LMMR0WYCBF"
   }
 };
