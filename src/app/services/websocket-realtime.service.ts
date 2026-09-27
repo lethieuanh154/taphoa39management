@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { skip, distinctUntilChanged } from 'rxjs/operators';
 import { io, Socket } from 'socket.io-client';
+import { Auth, onIdTokenChanged } from '@angular/fire/auth';
 import { BackendUrlService } from './backend-url.service';
 
 /**
@@ -63,6 +64,11 @@ export interface MergedProductsUpdatedPayload {
 })
 export class WebSocketRealtimeService implements OnDestroy {
   private backendUrlService = inject(BackendUrlService);
+  private auth = inject(Auth);
+  // Firebase ID token: BE chi gui Cost/OnHandNV/hang gop cho socket da xac thuc (room 'staff'),
+  // client khong token (khach DatHang) chi nhan ban da loc.
+  private idToken: string | null = null;
+  private unsubscribeIdToken: (() => void) | null = null;
   private socket: Socket | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
@@ -82,6 +88,15 @@ export class WebSocketRealtimeService implements OnDestroy {
 
   constructor() {
     console.log('🔌 [WebSocketRealtime] Service initialized');
+
+    this.unsubscribeIdToken = onIdTokenChanged(this.auth, async (user) => {
+      try {
+        this.idToken = user ? await user.getIdToken() : null;
+      } catch {
+        this.idToken = null;
+      }
+      this.authenticateSocket();
+    });
 
     // Reconnect WebSocket when backend URL changes (failover)
     this.urlChangeSub = this.backendUrlService.getUrlChanges$().pipe(
@@ -113,10 +128,22 @@ export class WebSocketRealtimeService implements OnDestroy {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: this.reconnectDelay,
-      timeout: 10000
+      timeout: 10000,
+      // Dang ham -> doc token moi moi lan (re)connect
+      auth: (cb) => cb(this.idToken ? { idToken: this.idToken } : {})
     });
 
     this.setupEventListeners();
+  }
+
+  /** Token co/doi SAU khi da connect -> xin BE chuyen socket sang room 'staff'. */
+  private authenticateSocket(): void {
+    if (!this.socket?.connected || !this.idToken) return;
+    this.socket.emit('authenticate', { idToken: this.idToken }, (res: { ok?: boolean }) => {
+      if (!res?.ok) {
+        console.warn('⚠️ [WebSocketRealtime] authenticate bi tu choi - se khong nhan Cost/OnHandNV realtime');
+      }
+    });
   }
 
   /**
@@ -339,6 +366,7 @@ export class WebSocketRealtimeService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.disconnect();
+    this.unsubscribeIdToken?.();
     this.urlChangeSub?.unsubscribe();
     this.productUpdates$.complete();
     this.productsAdded$.complete();
