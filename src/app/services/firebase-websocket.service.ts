@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { Subject, Observable, Subscription } from 'rxjs';
 import { filter, map, skip, distinctUntilChanged } from 'rxjs/operators';
 import { BackendUrlService } from './backend-url.service';
+import { Auth, onIdTokenChanged } from '@angular/fire/auth';
 
 type AnyEvent = { namespace: string; event: string; args: any[] };
 
@@ -14,7 +15,12 @@ type AnyEvent = { namespace: string; event: string; args: any[] };
 @Injectable({ providedIn: 'root' })
 export class FirebaseWebsocketService implements OnDestroy {
   private backendUrlService = inject(BackendUrlService);
+  private auth = inject(Auth);
   private urlChangeSub: Subscription | null = null;
+  // Firebase ID token: BE tu choi invoices/orders/messages va chi gui su kien noi bo cua
+  // products/customers khi socket co token nhan vien.
+  private idToken: string | null = null;
+  private unsubscribeIdToken: (() => void) | null = null;
   private namespacePaths = {
     products: '/api/websocket/products',
     customers: '/api/websocket/customers',
@@ -42,6 +48,33 @@ export class FirebaseWebsocketService implements OnDestroy {
       this.disconnectAll();
       this.connect();
     });
+
+    this.unsubscribeIdToken = onIdTokenChanged(this.auth, async (user) => {
+      try {
+        this.idToken = user ? await user.getIdToken() : null;
+      } catch {
+        this.idToken = null;
+      }
+      this.applyIdToken();
+    });
+  }
+
+  /**
+   * Token co/doi sau khi da tao socket:
+   * - socket da ket noi (products/customers) -> `authenticate` de BE chuyen sang room nhan vien.
+   * - socket bi BE tu choi luc chua co token -> socket.io KHONG tu ket noi lai -> connect() lai.
+   */
+  private applyIdToken(): void {
+    if (!this.idToken) return;
+    for (const ns of Object.keys(this.sockets) as Array<keyof typeof this.namespacePaths>) {
+      const socket = this.sockets[ns];
+      if (!socket) continue;
+      if (socket.connected) {
+        socket.emit('authenticate', { idToken: this.idToken });
+      } else {
+        socket.connect();
+      }
+    }
   }
 
   connect(): void {
@@ -55,7 +88,9 @@ export class FirebaseWebsocketService implements OnDestroy {
         const socket = io(`${url}${this.namespacePaths[ns]}`, {
           transports: ['polling'],  // Use polling only, WebSocket disabled
           reconnectionAttempts: 5,
-          reconnectionDelay: 1000
+          reconnectionDelay: 1000,
+          // Dang ham -> doc token moi moi lan (re)connect
+          auth: (cb) => cb(this.idToken ? { idToken: this.idToken } : {})
         });
         // forward any event
         socket.onAny((event: string, ...args: any[]) => {
@@ -158,6 +193,7 @@ export class FirebaseWebsocketService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.urlChangeSub?.unsubscribe();
+    this.unsubscribeIdToken?.();
     this.disconnectAll();
   }
 }
