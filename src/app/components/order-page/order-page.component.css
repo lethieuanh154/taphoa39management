@@ -319,3 +319,73 @@ mat-form-field input {
     animation: spin 1s linear infinite;
     margin-bottom: 12px;
 }
+/* Phone: compact filters so the table is visible */
+@media (max-width: 600px) {
+    .component-wrapper {
+        padding: 4px;
+    }
+
+    .websocket-status-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        margin-bottom: 6px;
+    }
+
+    .status-indicators {
+        gap: 4px;
+        justify-content: flex-start;
+    }
+
+    .status-item {
+        padding: 2px 4px;
+        font-size: 11px;
+    }
+
+    .status-item.rest-sync,
+    .realtime-indicator {
+        display: none;
+    }
+
+    .sync-button {
+        height: 28px;
+        padding: 0 8px;
+    }
+
+    .filters-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        padding: 0;
+    }
+
+    .filters-section mat-form-field {
+        flex: none;
+        min-width: 0;
+        width: 100%;
+        margin: 0;
+    }
+
+    mat-form-field input {
+        height: 24px;
+    }
+
+    .date-filters {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+
+    .date-filters button {
+        flex: 1;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .table-container {
+        margin-top: 6px;
+    }
+}

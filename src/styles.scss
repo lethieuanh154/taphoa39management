@@ -77,3 +77,30 @@ html, body {
 .filters-section.collapsed {
   max-height: 0; opacity: 0; overflow: hidden; padding: 0; margin: 0;
 }
+/* Phone: compact filter inputs */
+@media (max-width: 600px) {
+  .filters-section .mat-mdc-form-field,
+  .filters .mat-mdc-form-field,
+  .filter-row .mat-mdc-form-field,
+  .header-actions .mat-mdc-form-field {
+    --mat-form-field-container-height: 40px;
+    --mat-form-field-container-vertical-padding: 8px;
+    --mat-form-field-container-text-size: 13px;
+    --mat-form-field-outlined-label-text-size: 13px;
+  }
+  .filters-section .mat-mdc-form-field-subscript-wrapper,
+  .filters .mat-mdc-form-field-subscript-wrapper,
+  .filter-row .mat-mdc-form-field-subscript-wrapper,
+  .header-actions .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+  .filters-section .mat-mdc-form-field-icon-suffix > .mat-icon {
+    padding: 0 6px;
+  }
+  .filters-section .mat-datepicker-toggle .mat-mdc-icon-button {
+    --mat-icon-button-state-layer-size: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 4px;
+  }
+}
